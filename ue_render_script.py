@@ -63,7 +63,7 @@ check_count = 0
 PRESET_PATH = "/Game/Cinematics/Pending_MoviePipelinePrimaryConfig.Pending_MoviePipelinePrimaryConfig"
 LEVEL_SEQUENCE_PATH = "/Game/NewLevelSequence"
 MAP_PATH = "/Game/NewMap"
-INPUT_AUDIO_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/input"  # Windows path for UE
+INPUT_AUDIO_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/output"  # Windows path for UE
 RENDER_OUTPUT_FOLDER = "C:/Users/marketing/Documents/Unreal Projects/male_runtime/Saved/MovieRenders"  # UE render output folder
 LIPSYNC_ANIMBP_PATH = "/RuntimeMetaHumanLipSync/LipSyncData/MyLipSync_Face_AnimBP1.MyLipSync_Face_AnimBP1"  # Georgy Dev Lip Sync AnimBP
 

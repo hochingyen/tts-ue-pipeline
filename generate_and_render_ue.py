@@ -141,12 +141,27 @@ def copy_to_ue_input(audio_file, ue_input_folder):
         return False
 
 
+def write_current_audio_marker(audio_file, output_dir):
+    """
+    Write the absolute path of the audio file to output/current_audio.txt
+    so ue_render_script.py knows exactly which file to use.
+    """
+    marker_file = os.path.join(output_dir, "current_audio.txt")
+    abs_path = os.path.abspath(audio_file).replace("\\", "/")
+    with open(marker_file, "w", encoding="utf-8") as f:
+        f.write(abs_path)
+    print(f"[SUCCESS] Audio path written to: {marker_file} → {abs_path}")
+
+
 def run_pipeline_for_audio(audio_file, ue_input_folder, ue_launch_script, no_launch):
     """
     Run the full UE render pipeline for a single audio file:
-    copy WAV to input → launch UE → wait for close → copy MP4 to output
+    write current_audio.txt → copy WAV to input → launch UE → wait for close → copy MP4 to output
     """
-    # Copy WAV to UE input folder
+    # Write exact audio path to output/current_audio.txt for ue_render_script.py
+    write_current_audio_marker(audio_file, DEFAULT_TTS_OUTPUT)
+
+    # Copy WAV to UE input folder (optional, kept for backward compat)
     copy_success = copy_to_ue_input(audio_file, ue_input_folder)
     if not copy_success:
         print(f"[WARNING] Copy to UE input failed for: {audio_file}")
