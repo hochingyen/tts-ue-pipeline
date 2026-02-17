@@ -219,8 +219,6 @@ def benchmark_language(
     character_name = f"cpu_gpu_{language}_{emotion}"
 
     try:
-        # For English: clone professor voice. For other languages: generate natively (no voice prompt)
-        prompt_path = voice_path if language == "en" else None
         result = pipeline.generate(
             text=text,
             character_name=character_name,
@@ -229,7 +227,7 @@ def benchmark_language(
             force_gender="female",
             force_emotion=emotion,
             enable_analysis=False,
-            audio_prompt_path=prompt_path
+            audio_prompt_path=voice_path
         )
 
         gen_time = time.time() - gen_start
