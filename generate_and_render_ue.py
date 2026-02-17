@@ -71,7 +71,9 @@ def generate_tts(language=None, emotion="auto", use_openai_prosody=True):
     print(f"Running: {' '.join(cmd)}")
 
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True, encoding='utf-8', env=env)
         print(result.stdout)
 
         # Find the generated WAV using glob (emotion may be auto-detected, name differs)
