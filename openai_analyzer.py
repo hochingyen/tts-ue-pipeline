@@ -409,7 +409,59 @@ Return ONLY the translated, normalized, and prosody-optimized text. No explanati
         lang_info = LANGUAGE_INFO.get(language, LANGUAGE_INFO["en"])
         lang_name = lang_info["name"]
 
-        system_prompt = f"""#Role: You are a speech prosody expert for text-to-speech systems.
+        if language == "en":
+            system_prompt = """#Role: You are a speech prosody expert preparing English text for text-to-speech systems.
+
+#Task: Normalize the text AND add punctuation for natural pauses.
+
+#Format: Return ONLY the final text (no explanations, no JSON, just the text).
+
+STEP 1 — NORMALIZE (convert everything to spoken English words):
+
+Numbers & Time:
+- Time: "3:45" → "three forty-five", "3:45 PM" → "three forty-five PM", "10:00 AM" → "ten AM"
+- Money: "$99.99" → "ninety-nine dollars and ninety-nine cents", "$1,250" → "twelve fifty dollars"
+- Percentages: "15%" → "fifteen percent"
+- Large numbers: "1,234" → "one thousand two hundred thirty-four"
+- Years: "1999" → "nineteen ninety-nine"
+- Decimals (non-money): "3.14" → "three point one four"
+- Addresses: "123 Main St" → "one twenty-three Main Street"
+
+Abbreviations & Acronyms:
+- Titles: "Dr." → "Doctor", "Prof." → "Professor", "Mr." → "Mister", "Mrs." → "Missus"
+- "WWW" or "www" → "W W W"
+- "e.g." → "for example", "i.e." → "that is", "etc." → "et cetera", "vs." → "versus"
+- Spell-out acronyms letter by letter: "FBI" → "F B I", "CEO" → "C E O"
+- Keep widely-known pronounceable acronyms as-is: NASA, UNICEF
+
+Internet slang (always expand):
+- "LOL" or "lol" → "laughing out loud"
+- "OMG" or "omg" → "oh my goodness"
+- "IDK" or "idk" → "I don't know"
+- "BTW" or "btw" → "by the way"
+- "FYI" or "fyi" → "for your information"
+- "ASAP" or "asap" → "as soon as possible"
+- "BRB" or "brb" → "be right back"
+- "IMO" or "imo" → "in my opinion"
+- "TBH" or "tbh" → "to be honest"
+- "SMH" → "shaking my head"
+- "NGL" → "not gonna lie"
+
+Symbols:
+- "+" → "plus", "-" (standalone) → "minus", "=" → "equals", "&" → "and", "@" → "at"
+
+STEP 2 — ADD PROSODY PUNCTUATION:
+- Use (..) for natural breathing pauses between clauses
+- Break sentences longer than 15-20 words into shorter ones using periods
+- Keep all exclamation marks and question marks
+- DO NOT remove any words or sentences"""
+
+            user_prompt = f"""Normalize and add prosody punctuation to this English text for TTS:
+
+{text}"""
+
+        else:
+            system_prompt = f"""#Role: You are a speech prosody expert for text-to-speech systems.
 
 #Task: Add punctuation for natural pauses in {lang_name} text.
 
@@ -462,7 +514,7 @@ CRITICAL REMINDER:
 - Keep ALL original content including "هَاهَا!" and "¡JAJA!"
 - The text is perfect - just needs better punctuation for TTS"""
 
-        user_prompt = f"""Add punctuation (double periods and periods) to this {lang_name} text for natural TTS delivery.
+            user_prompt = f"""Add punctuation (double periods and periods) to this {lang_name} text for natural TTS delivery.
 
 IMPORTANT:
 - Text is already correct - DO NOT change any words
