@@ -1,0 +1,110 @@
+# Unreal Engine Lip-Sync Automation Configuration
+# Fill in the paths and settings for your environment
+
+paths:
+  # TODO: Specify the folder where WAV files will be dropped
+  input_folder: "./input"
+
+  # TODO: Specify where final MP4 videos should be saved
+  output_folder: "./output"
+
+  # TODO: Specify temporary folder for UE video output (no audio)
+  temp_folder: "./temp"
+
+  # TODO: REQUIRED - Full path to your .uproject file
+  # Example: "D:/Projects/LipSyncProject/LipSync.uproject"
+  unreal_project: "PATH_TO_YOUR_UPROJECT_FILE"
+
+  # TODO: REQUIRED - Full path to UnrealEditor.exe
+  # Example: "C:/Program Files/Epic Games/UE_5.3/Engine/Binaries/Win64/UnrealEditor.exe"
+  unreal_editor: "PATH_TO_UNREAL_EDITOR_EXE"
+
+  # TODO: REQUIRED - Path to the UE Python script (relative to project root or absolute)
+  # This script will be placed in your UE project's Content/Python/ folder
+  # Example: "Content/Python/ue_render_script.py"
+  ue_python_script: "Content/Python/ue_render_script.py"
+
+# Unreal Engine sequence settings
+unreal:
+  # TODO: REQUIRED - Asset path to the existing sequence in your UE project
+  # Example: "/Game/Sequences/LipSync_Master"
+  # This sequence should already have MetaHuman and Georgy Dev lip sync configured
+  sequence_path: "/Game/Sequences/YOUR_SEQUENCE_NAME"
+
+  # TODO: REQUIRED - Name of the audio track in your sequence to replace
+  # You can find this by opening the sequence in UE and checking the track name
+  # Example: "Audio Track" or "Dialogue"
+  audio_track_name: "Audio Track"
+
+  # TODO: OPTIONAL - MetaHuman actor name if needed for reference
+  metahuman_actor: "MetaHuman"
+
+# Rendering settings
+rendering:
+  # Video resolution
+  resolution_width: 1920
+  resolution_height: 1080
+
+  # Frame rate (should match your sequence settings)
+  frame_rate: 30
+
+  # TODO: Choose output format from UE: "mp4" or "mov"
+  # Some systems may only support certain formats from Movie Render Queue
+  video_format: "mp4"
+
+  # Video quality (lower CRF = higher quality, 18-23 is good range)
+  video_crf: 18
+
+  # TODO: Set to true to render without GPU display (headless mode)
+  # Set to false if you want to see the render or have GPU issues with -nullrhi
+  headless_mode: true
+
+# FFmpeg encoding settings for final output
+encoding:
+  # Video codec settings
+  # "copy" means no re-encoding (fast), or use "libx264" to re-encode
+  video_codec: "copy"
+
+  # Audio codec and quality
+  audio_codec: "aac"
+  audio_bitrate: "192k"
+
+  # Pixel format for compatibility
+  pixel_format: "yuv420p"
+
+# File monitoring settings
+monitoring:
+  # How often to check input folder for new files (seconds)
+  poll_interval: 5
+
+  # Maximum time to wait for UE to complete rendering (seconds)
+  # Adjust based on your typical video length and hardware
+  render_timeout: 600
+
+  # How many times to retry if UE crashes
+  max_retries: 3
+
+  # Logging level: DEBUG, INFO, WARNING, ERROR
+  log_level: "INFO"
+
+# Audio file validation
+audio:
+  # TODO: Add more formats if needed (mp3, m4a, etc.)
+  supported_formats: [".wav"]
+
+  # Maximum audio duration in seconds (0 = no limit)
+  max_duration: 0
+
+  # Minimum audio duration in seconds
+  min_duration: 0.5
+
+# Output file naming
+output:
+  # Prefix for output files
+  prefix: "lipsync"
+
+  # Include timestamp in filename
+  include_timestamp: true
+
+  # Include job ID in filename
+  include_job_id: true
