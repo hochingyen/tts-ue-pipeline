@@ -36,7 +36,7 @@ UE_LAUNCH_SCRIPT = "launch_ue_remote.py"
 DEFAULT_TTS_OUTPUT = "output"
 
 
-def generate_tts(language=None, emotion="serious", use_openai_prosody=True):
+def generate_tts(language=None, emotion="auto", use_openai_prosody=True):
     """
     Generate TTS audio using test_multilingual_benchmark.py
 
@@ -178,8 +178,8 @@ def main():
     parser.add_argument(
         '--emotion',
         type=str,
-        default='serious',
-        help='Emotion for TTS (default: serious)'
+        default='auto',
+        help='Emotion for TTS (default: auto - detected by OpenAI)'
     )
 
     parser.add_argument(

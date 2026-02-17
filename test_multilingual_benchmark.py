@@ -127,7 +127,7 @@ def benchmark_language(
     pipeline: ChatterBoxUEPipeline,
     voice_path: str,
     output_dir: str,
-    emotion: str = "serious",
+    emotion: str = "auto",
     use_openai_prosody: bool = False,
     analyzer: OpenAIVoiceAnalyzer = None
 ) -> Dict:
@@ -168,10 +168,21 @@ def benchmark_language(
         print(f"\n[1/3] Optimizing prosody with OpenAI GPT-4o...")
         prosody_start = time.time()
         try:
-            optimized_text = analyzer.optimize_prosody(
-                text=text,
-                language=language
-            )
+            if emotion == "auto" and language == "en":
+                # Auto mode (English only): use analyze() to detect emotion + normalize text
+                print(f"  [Auto emotion] Detecting emotion from text...")
+                result = analyzer.analyze(text)
+                emotion = result.get("emotion", "neutral")
+                optimized_text = result.get("spoken_text", text)
+                print(f"  [Auto emotion] Detected: {emotion}")
+            else:
+                # Non-English or manual emotion: normalize text and add prosody pauses
+                if emotion == "auto":
+                    emotion = "neutral"  # fallback for non-English auto
+                optimized_text = analyzer.optimize_prosody(
+                    text=text,
+                    language=language
+                )
             prosody_time = time.time() - prosody_start
             print(f"[PROSODY] Optimized in {prosody_time:.2f}s")
             print(f"  Original:  {text[:80]}...")
@@ -181,6 +192,8 @@ def benchmark_language(
         except Exception as e:
             print(f"[WARNING] Prosody optimization failed: {e}")
             print(f"   Continuing with original text")
+            if emotion == "auto":
+                emotion = "neutral"
             prosody_time = 0
 
     # Generate audio with voice cloning on GPU
@@ -437,10 +450,10 @@ def main():
     parser.add_argument(
         '--emotion',
         type=str,
-        default='serious',
-        choices=['neutral', 'happy', 'sad', 'angry', 'fear', 'surprise', 'disgust',
+        default='auto',
+        choices=['auto', 'neutral', 'happy', 'sad', 'angry', 'fear', 'surprise', 'disgust',
                  'excited', 'calm', 'confident', 'nervous', 'serious'],
-        help='Emotion for TTS generation (default: serious)'
+        help='Emotion for TTS generation (default: auto - detected by OpenAI)'
     )
 
     args = parser.parse_args()
