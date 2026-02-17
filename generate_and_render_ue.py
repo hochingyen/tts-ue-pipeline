@@ -131,6 +131,27 @@ def copy_to_ue_input(audio_file, ue_input_folder):
         return False
 
 
+def run_pipeline_for_audio(audio_file, ue_input_folder, ue_launch_script, no_launch):
+    """
+    Run the full UE render pipeline for a single audio file:
+    copy WAV to input → launch UE → wait for close → copy MP4 to output
+    """
+    # Copy WAV to UE input folder
+    copy_success = copy_to_ue_input(audio_file, ue_input_folder)
+    if not copy_success:
+        print(f"[WARNING] Copy to UE input failed for: {audio_file}")
+
+    # Launch UE and wait for render to complete
+    if not no_launch:
+        launch_success = launch_ue_rendering(ue_launch_script)
+        if not launch_success:
+            print(f"[WARNING] UE rendering launch failed for: {audio_file}")
+        else:
+            copy_mp4_to_output(audio_file)
+    else:
+        print("\n[SKIPPED] UE rendering launch (--no-launch flag)")
+
+
 def copy_mp4_to_output(audio_file):
     """
     Copy rendered MP4 from UE render folder to output/, named after the WAV file.
@@ -287,28 +308,11 @@ def main():
             emotion=args.emotion,
             use_openai_prosody=not args.no_openai_prosody
         )
-
         if not audio_file:
             print("\n[FAILED] TTS generation failed")
             sys.exit(1)
 
-    # Step 2: Copy to UE input folder
-    copy_success = copy_to_ue_input(audio_file, args.ue_input)
-
-    if not copy_success:
-        print("\n[WARNING] Copy to UE input folder failed or requires manual action")
-
-    # Step 3: Launch UE rendering and wait for it to close (optional)
-    if not args.no_launch:
-        launch_success = launch_ue_rendering(args.ue_launch_script)
-
-        if not launch_success:
-            print("\n[WARNING] UE rendering launch failed or requires manual action")
-        else:
-            # Step 4: Copy MP4 to output folder after UE closes
-            copy_mp4_to_output(audio_file)
-    else:
-        print("\n[SKIPPED] UE rendering launch (--no-launch flag)")
+    run_pipeline_for_audio(audio_file, args.ue_input, args.ue_launch_script, args.no_launch)
 
     print("\n" + "="*80)
     print("[COMPLETE] Workflow finished")
