@@ -59,6 +59,7 @@ active_executor = None
 render_started = False
 check_count = 0
 current_audio_file_path = None  # Store input audio path for output naming
+render_complete_count = 0  # Frames waited after render finishes (for file flush)
 
 # Configuration
 PRESET_PATH = "/Game/Cinematics/Pending_MoviePipelinePrimaryConfig.Pending_MoviePipelinePrimaryConfig"
@@ -73,7 +74,7 @@ def check_render_status(_delta_time):
     """
     Sentry tick callback - stays alive until rendering ends.
     """
-    global active_executor, render_started, check_count, current_audio_file_path
+    global active_executor, render_started, check_count, current_audio_file_path, render_complete_count
 
     if not active_executor:
         return
@@ -95,9 +96,16 @@ def check_render_status(_delta_time):
 
     # Once rendering has started, wait for it to finish
     if render_started and not is_rendering:
-        unreal.log("=" * 60)
-        unreal.log("!!! RENDERING COMPLETE !!!")
-        unreal.log("=" * 60)
+        render_complete_count += 1
+
+        # Wait 150 frames (~5 seconds at 30fps) for UE to finish writing the MP4 to disk
+        if render_complete_count == 1:
+            unreal.log("=" * 60)
+            unreal.log("!!! RENDERING COMPLETE - waiting 5s for file flush !!!")
+            unreal.log("=" * 60)
+
+        if render_complete_count < 150:
+            return
 
         # Copy output file to final destination
         copy_output_file(current_audio_file_path)
