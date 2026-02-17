@@ -168,17 +168,24 @@ def benchmark_language(
         print(f"\n[1/3] Optimizing prosody with OpenAI GPT-4o...")
         prosody_start = time.time()
         try:
-            if emotion == "auto" and language == "en":
-                # Auto mode (English only): use analyze() to detect emotion + normalize text
+            if emotion == "auto":
+                # Auto mode: use analyze() to detect emotion from text (works for all languages)
                 print(f"  [Auto emotion] Detecting emotion from text...")
                 result = analyzer.analyze(text)
                 emotion = result.get("emotion", "neutral")
-                optimized_text = result.get("spoken_text", text)
                 print(f"  [Auto emotion] Detected: {emotion}")
+                if language == "en":
+                    # For English, also use the normalized spoken_text from analyze()
+                    optimized_text = result.get("spoken_text", text)
+                else:
+                    # For non-English, use optimize_prosody() for spoken_text
+                    # (analyze() returns English-normalized text, wrong for other languages)
+                    optimized_text = analyzer.optimize_prosody(
+                        text=text,
+                        language=language
+                    )
             else:
-                # Non-English or manual emotion: normalize text and add prosody pauses
-                if emotion == "auto":
-                    emotion = "neutral"  # fallback for non-English auto
+                # Manual emotion: just normalize text and add prosody pauses
                 optimized_text = analyzer.optimize_prosody(
                     text=text,
                     language=language
@@ -192,9 +199,11 @@ def benchmark_language(
         except Exception as e:
             print(f"[WARNING] Prosody optimization failed: {e}")
             print(f"   Continuing with original text")
-            if emotion == "auto":
-                emotion = "neutral"
             prosody_time = 0
+
+    # Safety fallback: if emotion is still "auto" (e.g. OpenAI disabled), use neutral
+    if emotion == "auto":
+        emotion = "neutral"
 
     # Generate audio with voice cloning on GPU
     step_num = "[2/3]" if use_openai_prosody else "[1/2]"
