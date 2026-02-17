@@ -425,9 +425,14 @@ def main():
                 unreal.log(f"Using audio file from command line: {audio_file_path}")
                 break
 
-    # If no command-line argument, check input folder for latest WAV file
+    # If no command-line argument, check current_audio.txt for exact path first
     if not audio_file_path:
-        if os.path.exists(INPUT_AUDIO_FOLDER):
+        marker_file = os.path.join(INPUT_AUDIO_FOLDER, "current_audio.txt")
+        if os.path.exists(marker_file):
+            with open(marker_file, "r", encoding="utf-8") as f:
+                audio_file_path = f.read().strip()
+            unreal.log(f"Using audio file from current_audio.txt: {audio_file_path}")
+        elif os.path.exists(INPUT_AUDIO_FOLDER):
             import glob
             wav_files = glob.glob(os.path.join(INPUT_AUDIO_FOLDER, "*.wav"))
             if wav_files:

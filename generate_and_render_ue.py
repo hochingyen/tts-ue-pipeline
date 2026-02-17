@@ -121,6 +121,14 @@ def copy_to_ue_input(audio_file, ue_input_folder):
             dest_file = os.path.join(ue_input_folder, os.path.basename(audio_file))
             shutil.copy2(audio_file, dest_file)
             print(f"[SUCCESS] Copied to: {dest_file}")
+
+            # Write exact path to current_audio.txt so ue_render_script.py uses the right file
+            marker_file = os.path.join(ue_input_folder, "current_audio.txt")
+            # Convert to Windows-style path with forward slashes for UE
+            ue_path = dest_file.replace("\\", "/")
+            with open(marker_file, "w", encoding="utf-8") as f:
+                f.write(ue_path)
+            print(f"[SUCCESS] Audio path written to: {marker_file}")
             return True
         except Exception as e:
             print(f"[ERROR] Copy failed: {e}")
