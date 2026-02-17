@@ -168,24 +168,28 @@ def benchmark_language(
         print(f"\n[1/3] Optimizing prosody with OpenAI GPT-4o...")
         prosody_start = time.time()
         try:
-            if emotion == "auto":
-                # Auto mode: use analyze() to detect emotion from text (works for all languages)
-                print(f"  [Auto emotion] Detecting emotion from text...")
+            if language == "en":
+                # For English: always use analyze() — it has proven normalization examples
+                # (times, currency, slang, abbreviations) in its SYSTEM_PROMPT
+                print(f"  [English] Running analyze() for normalization + emotion detection...")
                 result = analyzer.analyze(text)
-                emotion = result.get("emotion", "neutral")
-                print(f"  [Auto emotion] Detected: {emotion}")
-                if language == "en":
-                    # For English, also use the normalized spoken_text from analyze()
-                    optimized_text = result.get("spoken_text", text)
+                detected_emotion = result.get("emotion", "neutral")
+                optimized_text = result.get("spoken_text", text)
+                if emotion == "auto":
+                    # Use OpenAI-detected emotion
+                    emotion = detected_emotion
+                    print(f"  [Auto emotion] Detected: {emotion}")
                 else:
-                    # For non-English, use optimize_prosody() for spoken_text
-                    # (analyze() returns English-normalized text, wrong for other languages)
-                    optimized_text = analyzer.optimize_prosody(
-                        text=text,
-                        language=language
-                    )
+                    # Keep user-specified emotion, just use the normalized text
+                    print(f"  [Manual emotion] Using '{emotion}' (OpenAI detected '{detected_emotion}')")
             else:
-                # Manual emotion: just normalize text and add prosody pauses
+                # For non-English: detect emotion via analyze(), normalize text via optimize_prosody()
+                print(f"  [Non-English] Detecting emotion from text...")
+                result = analyzer.analyze(text)
+                detected_emotion = result.get("emotion", "neutral")
+                if emotion == "auto":
+                    emotion = detected_emotion
+                    print(f"  [Auto emotion] Detected: {emotion}")
                 optimized_text = analyzer.optimize_prosody(
                     text=text,
                     language=language
