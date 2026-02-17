@@ -480,13 +480,12 @@ def main():
     unreal.log("=" * 60)
     unreal.log("Movie Render Queue - Automated Render with Audio Sync")
     unreal.log("=" * 60)
-    unreal.log()
-    unreal.log(f"Input Folder:  {INPUT_AUDIO_FOLDER}")
+    unreal.log(" ")
     unreal.log(f"Input Folder:  {INPUT_AUDIO_FOLDER}")
     unreal.log(f"Output Folder: {OUTPUT_FOLDER}")
     unreal.log(f"Render Folder: {RENDER_OUTPUT_FOLDER}")
     unreal.log("=" * 60)
-    unreal.log()
+    unreal.log(" ")
 
     # Check for command-line audio file argument
     audio_file_path = None
