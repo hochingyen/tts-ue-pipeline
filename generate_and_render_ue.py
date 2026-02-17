@@ -23,6 +23,7 @@ import sys
 import argparse
 import shutil
 import subprocess
+import glob
 from pathlib import Path
 
 
@@ -34,6 +35,9 @@ UE_LAUNCH_SCRIPT = "launch_ue_remote.py"
 
 # Default output directory for TTS generation
 DEFAULT_TTS_OUTPUT = "output"
+
+# UE render output folder (must match ue_render_script.py)
+RENDER_OUTPUT_FOLDER = r"C:\Users\marketing\Documents\Unreal Projects\male_runtime\Saved\MovieRenders"
 
 
 def generate_tts(language=None, emotion="auto", use_openai_prosody=True):
@@ -70,18 +74,18 @@ def generate_tts(language=None, emotion="auto", use_openai_prosody=True):
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         print(result.stdout)
 
-        # Determine generated audio file path
-        if language:
-            audio_file = f"{DEFAULT_TTS_OUTPUT}/cpu_gpu_{language}_{emotion}.wav"
-        else:
-            # Return first generated file for --all
-            audio_file = f"{DEFAULT_TTS_OUTPUT}/cpu_gpu_en_{emotion}.wav"
-
-        if os.path.exists(audio_file):
+        # Find the generated WAV using glob (emotion may be auto-detected, name differs)
+        lang = language if language else "en"
+        pattern = os.path.join(DEFAULT_TTS_OUTPUT, f"cpu_gpu_{lang}_*.wav")
+        wav_files = glob.glob(pattern)
+        if wav_files:
+            # Pick the newest one
+            wav_files.sort(key=os.path.getmtime, reverse=True)
+            audio_file = wav_files[0]
             print(f"\n[SUCCESS] Generated: {audio_file}")
             return audio_file
         else:
-            print(f"[ERROR] Audio file not found: {audio_file}")
+            print(f"[ERROR] No WAV found matching: {pattern}")
             return None
 
     except subprocess.CalledProcessError as e:
@@ -124,6 +128,46 @@ def copy_to_ue_input(audio_file, ue_input_folder):
         print(f"\nManual copy required:")
         print(f"  Source: {os.path.abspath(audio_file)}")
         print(f"  Destination: {ue_input_folder}")
+        return False
+
+
+def copy_mp4_to_output(audio_file):
+    """
+    Copy rendered MP4 from UE render folder to output/, named after the WAV file.
+
+    Args:
+        audio_file: Path to the source WAV file (used for naming the MP4)
+    """
+    print("\n" + "="*80)
+    print("[STEP 4/4] Copying MP4 to Output Folder")
+    print("="*80)
+
+    # Find newest MP4 in UE render folder
+    mp4_pattern = os.path.join(RENDER_OUTPUT_FOLDER, "*.mp4")
+    mp4_files = glob.glob(mp4_pattern)
+    if not mp4_files:
+        print(f"[ERROR] No MP4 found in: {RENDER_OUTPUT_FOLDER}")
+        return False
+
+    mp4_files.sort(key=os.path.getmtime, reverse=True)
+    rendered_file = mp4_files[0]
+
+    # Name MP4 after WAV file
+    if audio_file:
+        basename = os.path.splitext(os.path.basename(audio_file))[0]
+    else:
+        import time
+        basename = f"render_{time.strftime('%Y%m%d_%H%M%S')}"
+
+    dest_path = os.path.join(DEFAULT_TTS_OUTPUT, f"{basename}.mp4")
+
+    try:
+        os.makedirs(DEFAULT_TTS_OUTPUT, exist_ok=True)
+        shutil.copy2(rendered_file, dest_path)
+        print(f"[SUCCESS] MP4 copied to: {dest_path}")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Copy failed: {e}")
         return False
 
 
@@ -254,12 +298,15 @@ def main():
     if not copy_success:
         print("\n[WARNING] Copy to UE input folder failed or requires manual action")
 
-    # Step 3: Launch UE rendering (optional)
+    # Step 3: Launch UE rendering and wait for it to close (optional)
     if not args.no_launch:
         launch_success = launch_ue_rendering(args.ue_launch_script)
 
         if not launch_success:
             print("\n[WARNING] UE rendering launch failed or requires manual action")
+        else:
+            # Step 4: Copy MP4 to output folder after UE closes
+            copy_mp4_to_output(audio_file)
     else:
         print("\n[SKIPPED] UE rendering launch (--no-launch flag)")
 

@@ -41,6 +41,7 @@ class UnrealRemoteControl:
         self.map_name = config.get('map_name', 'NewMap')
         self.remote_control_port = config.get('remote_control_port', 30010)
         self.remote_control_host = config.get('remote_control_host', 'localhost')
+        self.ue_process = None
 
     def validate_paths(self):
         """Validate that all required paths exist"""
@@ -90,8 +91,8 @@ class UnrealRemoteControl:
         print("Waiting for editor to fully load...")
         print()
 
-        # Launch UE (non-blocking)
-        subprocess.Popen(cmd)
+        # Launch UE (non-blocking - store process for waiting later)
+        self.ue_process = subprocess.Popen(cmd)
 
         return True
 
@@ -252,18 +253,14 @@ class UnrealRemoteControl:
 
             print()
             print("=" * 70)
-            print("✓ SUCCESS: Automation sequence complete!")
+            print("✓ Script sent to UE - waiting for UE to close...")
             print("=" * 70)
             print()
-            print("Next steps:")
-            print("1. Monitor UE's Output Log for script execution")
-            print("2. UE will automatically close when rendering completes")
-            print("3. Check output folder for rendered video")
-            print()
-            print("Note: UE will stay open. You can:")
-            print("- Execute more scripts via this tool")
-            print("- Manually close UE when done")
-            print()
+
+            # Wait for UE process to close (rendering is done when UE quits)
+            if self.ue_process:
+                self.ue_process.wait()
+                print("✓ UE has closed - rendering complete")
 
             return 0
 

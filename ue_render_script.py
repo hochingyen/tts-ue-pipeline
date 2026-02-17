@@ -58,15 +58,12 @@ import unreal
 active_executor = None
 render_started = False
 check_count = 0
-current_audio_file_path = None  # Store input audio path for output naming
-render_complete_count = 0  # Frames waited after render finishes (for file flush)
 
 # Configuration
 PRESET_PATH = "/Game/Cinematics/Pending_MoviePipelinePrimaryConfig.Pending_MoviePipelinePrimaryConfig"
 LEVEL_SEQUENCE_PATH = "/Game/NewLevelSequence"
 MAP_PATH = "/Game/NewMap"
 INPUT_AUDIO_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/input"  # Windows path for UE
-OUTPUT_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/output"  # Output folder for final MP4s
 RENDER_OUTPUT_FOLDER = "C:/Users/marketing/Documents/Unreal Projects/male_runtime/Saved/MovieRenders"  # UE render output folder
 LIPSYNC_ANIMBP_PATH = "/RuntimeMetaHumanLipSync/LipSyncData/MyLipSync_Face_AnimBP1.MyLipSync_Face_AnimBP1"  # Georgy Dev Lip Sync AnimBP
 
@@ -74,7 +71,7 @@ def check_render_status(_delta_time):
     """
     Sentry tick callback - stays alive until rendering ends.
     """
-    global active_executor, render_started, check_count, current_audio_file_path, render_complete_count
+    global active_executor, render_started, check_count
 
     if not active_executor:
         return
@@ -96,20 +93,9 @@ def check_render_status(_delta_time):
 
     # Once rendering has started, wait for it to finish
     if render_started and not is_rendering:
-        render_complete_count += 1
-
-        # Wait 150 frames (~5 seconds at 30fps) for UE to finish writing the MP4 to disk
-        if render_complete_count == 1:
-            unreal.log("=" * 60)
-            unreal.log("!!! RENDERING COMPLETE - waiting 5s for file flush !!!")
-            unreal.log("=" * 60)
-
-        if render_complete_count < 150:
-            return
-
-        # Copy output file to final destination
-        copy_output_file(current_audio_file_path)
-
+        unreal.log("=" * 60)
+        unreal.log("!!! RENDERING COMPLETE !!!")
+        unreal.log("=" * 60)
         unreal.SystemLibrary.quit_editor()
 
 
@@ -147,66 +133,6 @@ def clean_render_folder():
 
     except Exception as e:
         unreal.log_error(f"Failed to clean render folder: {str(e)}")
-        import traceback
-        unreal.log_error(traceback.format_exc())
-        return False
-
-
-def copy_output_file(input_audio_path):
-    """
-    Copy the rendered MP4 from the render folder to the output folder,
-    naming it to match the input audio file.
-
-    Args:
-        input_audio_path: Path to the input audio file (e.g., "C:/input/audio_001.wav")
-    """
-    import os
-    import shutil
-
-    try:
-        # Find the rendered MP4 file in the render output folder
-        import glob
-        mp4_files = glob.glob(os.path.join(RENDER_OUTPUT_FOLDER, "*.mp4"))
-        if not mp4_files:
-            unreal.log_error(f"No MP4 found in render folder: {RENDER_OUTPUT_FOLDER}")
-            return False
-        # Use the newest MP4
-        mp4_files.sort(key=os.path.getmtime, reverse=True)
-        rendered_file = mp4_files[0]
-        unreal.log(f"Found rendered file: {rendered_file}")
-
-        # Get the base name of the input audio file (without extension)
-        if input_audio_path:
-            audio_basename = os.path.splitext(os.path.basename(input_audio_path))[0]
-        else:
-            import time
-            audio_basename = f"render_{time.strftime('%Y%m%d_%H%M%S')}"
-
-        # Create output filename with .mp4 extension
-        output_filename = f"{audio_basename}.mp4"
-        output_path = os.path.join(OUTPUT_FOLDER, output_filename)
-
-        # Ensure output folder exists
-        if not os.path.exists(OUTPUT_FOLDER):
-            os.makedirs(OUTPUT_FOLDER)
-            unreal.log(f"Created output folder: {OUTPUT_FOLDER}")
-
-        # Copy the file
-        unreal.log("=" * 60)
-        unreal.log("Copying output file to final destination...")
-        unreal.log(f"  From: {rendered_file}")
-        unreal.log(f"  To: {output_path}")
-
-        shutil.copy2(rendered_file, output_path)
-
-        unreal.log("✓ Output file copied successfully!")
-        unreal.log(f"  Final output: {output_path}")
-        unreal.log("=" * 60)
-
-        return True
-
-    except Exception as e:
-        unreal.log_error(f"Failed to copy output file: {str(e)}")
         import traceback
         unreal.log_error(traceback.format_exc())
         return False
@@ -369,10 +295,7 @@ def setup_and_render_with_preset(sequence_path, preset_path, map_path, audio_fil
         audio_file_path: Optional path to a WAV file to replace the audio in the sequence
     """
     try:
-        global active_executor, current_audio_file_path
-
-        # Store audio file path for later use in output naming
-        current_audio_file_path = audio_file_path
+        global active_executor
 
         # Clean the render output folder before starting
         unreal.log("=" * 60)
