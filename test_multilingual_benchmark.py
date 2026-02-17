@@ -162,6 +162,8 @@ def benchmark_language(
 
     # Optimize text with OpenAI (if enabled)
     prosody_time = 0
+    original_text = text
+    spoken_text = text
     if use_openai_prosody and analyzer:
         print(f"\n[1/3] Optimizing prosody with OpenAI GPT-4o...")
         prosody_start = time.time()
@@ -172,8 +174,9 @@ def benchmark_language(
             )
             prosody_time = time.time() - prosody_start
             print(f"[PROSODY] Optimized in {prosody_time:.2f}s")
-            print(f"  Original: {text[:80]}...")
+            print(f"  Original:  {text[:80]}...")
             print(f"  Optimized: {optimized_text[:80]}...")
+            spoken_text = optimized_text
             text = optimized_text
         except Exception as e:
             print(f"[WARNING] Prosody optimization failed: {e}")
@@ -243,6 +246,12 @@ def benchmark_language(
 
             # Update filename field in metadata
             metadata['filename'] = simple_filename
+
+            # Save text comparison for OpenAI quality verification
+            metadata['text_data'] = {
+                'original_text': original_text,
+                'spoken_text': spoken_text
+            }
 
             # Rename metadata file (remove destination if exists)
             if os.path.exists(new_metadata):
