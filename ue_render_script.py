@@ -158,11 +158,15 @@ def copy_output_file(input_audio_path):
 
     try:
         # Find the rendered MP4 file in the render output folder
-        rendered_file = os.path.join(RENDER_OUTPUT_FOLDER, "NewLevelSequence.mp4")
-
-        if not os.path.exists(rendered_file):
-            unreal.log_error(f"Rendered file not found: {rendered_file}")
+        import glob
+        mp4_files = glob.glob(os.path.join(RENDER_OUTPUT_FOLDER, "*.mp4"))
+        if not mp4_files:
+            unreal.log_error(f"No MP4 found in render folder: {RENDER_OUTPUT_FOLDER}")
             return False
+        # Use the newest MP4
+        mp4_files.sort(key=os.path.getmtime, reverse=True)
+        rendered_file = mp4_files[0]
+        unreal.log(f"Found rendered file: {rendered_file}")
 
         # Get the base name of the input audio file (without extension)
         audio_basename = os.path.splitext(os.path.basename(input_audio_path))[0]
