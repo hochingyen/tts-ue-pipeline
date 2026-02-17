@@ -33,7 +33,7 @@ import json
 
 # Import our modules
 from chatterbox_ue_pipeline import ChatterBoxUEPipeline
-from openai_analyzer import OpenAIVoiceAnalyzer
+from openai_analyzer import OpenAIVoiceAnalyzer, normalize_english_text
 import torch
 import torchaudio as ta
 
@@ -169,18 +169,16 @@ def benchmark_language(
         prosody_start = time.time()
         try:
             if language == "en":
-                # For English: always use analyze() — it has proven normalization examples
-                # (times, currency, slang, abbreviations) in its SYSTEM_PROMPT
-                print(f"  [English] Running analyze() for normalization + emotion detection...")
-                result = analyzer.analyze(text)
+                # Step 1: Normalize English text in Python (deterministic, no LLM needed)
+                optimized_text = normalize_english_text(text)
+                print(f"  [English] Python normalization applied")
+                # Step 2: Use analyze() only for emotion detection
+                result = analyzer.analyze(optimized_text)
                 detected_emotion = result.get("emotion", "neutral")
-                optimized_text = result.get("spoken_text", text)
                 if emotion == "auto":
-                    # Use OpenAI-detected emotion
                     emotion = detected_emotion
                     print(f"  [Auto emotion] Detected: {emotion}")
                 else:
-                    # Keep user-specified emotion, just use the normalized text
                     print(f"  [Manual emotion] Using '{emotion}' (OpenAI detected '{detected_emotion}')")
             else:
                 # For non-English: detect emotion via analyze(), normalize text via optimize_prosody()

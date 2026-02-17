@@ -11,10 +11,167 @@ Designed for Unreal Engine voice asset generation.
 """
 
 import os
+import re
 import json
 from typing import Dict, Optional
 from openai import OpenAI
 from dotenv import load_dotenv
+
+
+# ─────────────────────────────────────────────
+# Python-based English text normalizer
+# Deterministic — no LLM needed for this step
+# ─────────────────────────────────────────────
+
+_ONES = [
+    '', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+    'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+    'seventeen', 'eighteen', 'nineteen'
+]
+_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+
+
+def _int_to_words(n: int) -> str:
+    if n < 0:
+        return 'negative ' + _int_to_words(-n)
+    if n < 20:
+        return _ONES[n]
+    if n < 100:
+        return _TENS[n // 10] + (('-' + _ONES[n % 10]) if n % 10 else '')
+    if n < 1000:
+        rest = _int_to_words(n % 100)
+        return _ONES[n // 100] + ' hundred' + (' and ' + rest if rest else '')
+    if n < 10000:
+        rest = _int_to_words(n % 1000)
+        return _int_to_words(n // 1000) + ' thousand' + (' ' + rest if rest else '')
+    return str(n)
+
+
+def _year_to_words(y: int) -> str:
+    """Convert 4-digit year: 1999 → nineteen ninety-nine, 2000 → two thousand"""
+    if 1000 <= y <= 1999 or 2000 <= y <= 2099:
+        hi, lo = y // 100, y % 100
+        if lo == 0:
+            return _int_to_words(hi) + ' hundred'
+        return _int_to_words(hi) + ' ' + _int_to_words(lo)
+    return _int_to_words(y)
+
+
+def _time_to_words(h: int, m: int, meridiem: str) -> str:
+    """Convert 3:45 PM → three forty-five PM"""
+    h_word = _int_to_words(h)
+    if m == 0:
+        m_word = "o'clock"
+    elif m < 10:
+        m_word = 'oh ' + _int_to_words(m)
+    else:
+        m_word = _int_to_words(m)
+    result = h_word + ' ' + m_word
+    if meridiem:
+        result += ' ' + meridiem.upper()
+    return result
+
+
+_SLANG = {
+    r'\bLOL\b': 'laughing out loud',
+    r'\blol\b': 'laughing out loud',
+    r'\bOMG\b': 'oh my goodness',
+    r'\bomg\b': 'oh my goodness',
+    r'\bIDK\b': "I don't know",
+    r'\bidk\b': "I don't know",
+    r'\bBTW\b': 'by the way',
+    r'\bbtw\b': 'by the way',
+    r'\bFYI\b': 'for your information',
+    r'\bfyi\b': 'for your information',
+    r'\bASAP\b': 'as soon as possible',
+    r'\basap\b': 'as soon as possible',
+    r'\bBRB\b': 'be right back',
+    r'\bbrb\b': 'be right back',
+    r'\bIMO\b': 'in my opinion',
+    r'\bimo\b': 'in my opinion',
+    r'\bTBH\b': 'to be honest',
+    r'\btbh\b': 'to be honest',
+    r'\bSMH\b': 'shaking my head',
+    r'\bNGL\b': "not gonna lie",
+}
+
+_ABBREV = {
+    r'\bDr\.': 'Doctor',
+    r'\bProf\.': 'Professor',
+    r'\bMr\.': 'Mister',
+    r'\bMrs\.': 'Missus',
+    r'\bMs\.': 'Miss',
+    r'\bSt\.': 'Street',
+    r'\betc\.': 'et cetera',
+    r'\bvs\.': 'versus',
+    r'\be\.g\.': 'for example',
+    r'\bi\.e\.': 'that is',
+    r'\bWWW\b': 'W W W',
+    r'\bwww\b': 'W W W',
+    r'\bFBI\b': 'F B I',
+    r'\bCIA\b': 'C I A',
+    r'\bCEO\b': 'C E O',
+}
+
+
+def normalize_english_text(text: str) -> str:
+    """
+    Normalize English text for TTS: expand abbreviations, convert numbers,
+    times, currency, percentages, and slang to spoken form.
+    """
+    # 1. Slang
+    for pattern, replacement in _SLANG.items():
+        text = re.sub(pattern, replacement, text)
+
+    # 2. Abbreviations
+    for pattern, replacement in _ABBREV.items():
+        text = re.sub(pattern, replacement, text)
+
+    # 3. Currency with cents: $99.99 → ninety-nine dollars and ninety-nine cents
+    def _currency_cents(m):
+        dollars = int(m.group(1).replace(',', ''))
+        cents = int(m.group(2))
+        d = _int_to_words(dollars) + ' dollar' + ('' if dollars == 1 else 's')
+        c = _int_to_words(cents) + ' cent' + ('' if cents == 1 else 's')
+        return d + ' and ' + c
+    text = re.sub(r'\$(\d[\d,]*)\.(\d{2})\b', _currency_cents, text)
+
+    # 4. Currency without cents: $1,250 → one thousand two hundred fifty dollars
+    def _currency_nodec(m):
+        n = int(m.group(1).replace(',', ''))
+        return _int_to_words(n) + ' dollar' + ('' if n == 1 else 's')
+    text = re.sub(r'\$(\d[\d,]*)\b', _currency_nodec, text)
+
+    # 5. Percentages: 15% → fifteen percent
+    def _percent(m):
+        n = m.group(1)
+        try:
+            val = int(n)
+            return _int_to_words(val) + ' percent'
+        except ValueError:
+            return n + ' percent'
+    text = re.sub(r'(\d+)\s*%', _percent, text)
+
+    # 6. Time: 3:45 PM or 3:45
+    def _time(m):
+        h, mins, mer = int(m.group(1)), int(m.group(2)), (m.group(3) or '').strip()
+        return _time_to_words(h, mins, mer)
+    text = re.sub(r'\b(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)?\b', _time, text)
+
+    # 7. 4-digit years: 1999, 2025 (standalone — not part of larger number)
+    def _year(m):
+        return _year_to_words(int(m.group(0)))
+    text = re.sub(r'\b(1[0-9]{3}|20[0-9]{2})\b', _year, text)
+
+    # 8. Remaining plain integers
+    def _plain_int(m):
+        return _int_to_words(int(m.group(0).replace(',', '')))
+    text = re.sub(r'\b\d[\d,]*\b', _plain_int, text)
+
+    # 9. Re-capitalize first letter of each sentence (after . ! ? or at start)
+    text = re.sub(r'(^|(?<=[.!?])\s+)([a-z])', lambda m: m.group(1) + m.group(2).upper(), text)
+
+    return text
 
 # Load environment variables from .env file
 load_dotenv()
