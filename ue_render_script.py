@@ -60,66 +60,21 @@ render_started = False
 check_count = 0
 current_audio_file_path = None  # Store input audio path for output naming
 
-# Configuration - Auto-detects preset from project path
-def get_preset_config():
-    """
-    Auto-detect which preset is being used and return appropriate configuration.
-    Detects from the current UE project path.
-    """
-    import os
+# ============================================================================
+# CONFIGURATION - Update these paths to match your setup
+# ============================================================================
 
-    # Get current project path from UE
-    project_path = unreal.SystemLibrary.get_project_directory()
+PRESET_PATH = "/Game/Cinematics/Pending_MoviePipelinePrimaryConfig.Pending_MoviePipelinePrimaryConfig"
+LEVEL_SEQUENCE_PATH = "/Game/NewLevelSequence"
+MAP_PATH = "/Game/NewMap"
+LIPSYNC_ANIMBP_PATH = "/RuntimeMetaHumanLipSync/LipSyncData/MyLipSync_Face_AnimBP1.MyLipSync_Face_AnimBP1"
 
-    # Detect preset from project path
-    if 'male_runtime' in project_path.lower():
-        preset = 'male_runtime'
-    elif 'female_runtime' in project_path.lower():
-        preset = 'female_runtime'
-    else:
-        # Default to male_runtime if can't detect
-        preset = 'male_runtime'
-        unreal.log_warning(f"Could not detect preset from project path: {project_path}")
-        unreal.log_warning(f"Defaulting to: {preset}")
+# TODO: Update these three paths to match your Windows machine
+INPUT_AUDIO_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/input"
+OUTPUT_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/output"
+RENDER_OUTPUT_FOLDER = "C:/Users/marketing/Documents/Unreal Projects/male_runtime/Saved/MovieRenders"
 
-    unreal.log(f"Detected preset: {preset}")
-    unreal.log(f"Project path: {project_path}")
-
-    # Build configuration based on preset
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    # ============================================================================
-    # CONFIGURATION - Adjust these paths to match your UE project setup
-    # ============================================================================
-
-    config = {
-        'preset': preset,
-
-        # TODO: Update these paths to match your UE project asset paths
-        'preset_path': "/Game/Cinematics/Pending_MoviePipelinePrimaryConfig.Pending_MoviePipelinePrimaryConfig",
-        'level_sequence_path': "/Game/NewLevelSequence",
-        'map_path': "/Game/NewMap",
-        'lipsync_animbp_path': "/RuntimeMetaHumanLipSync/LipSyncData/MyLipSync_Face_AnimBP1.MyLipSync_Face_AnimBP1",
-
-        # Auto-configured paths (no changes needed)
-        'input_audio_folder': os.path.join(script_dir, 'input').replace('\\', '/'),
-        'output_folder': os.path.join(script_dir, 'output').replace('\\', '/'),
-        'render_output_folder': os.path.join(project_path, 'Saved/MovieRenders').replace('\\', '/')
-    }
-
-    return config
-
-# Load configuration
-CONFIG = get_preset_config()
-
-# Extract config values for backward compatibility
-PRESET_PATH = CONFIG['preset_path']
-LEVEL_SEQUENCE_PATH = CONFIG['level_sequence_path']
-MAP_PATH = CONFIG['map_path']
-INPUT_AUDIO_FOLDER = CONFIG['input_audio_folder']
-OUTPUT_FOLDER = CONFIG['output_folder']
-RENDER_OUTPUT_FOLDER = CONFIG['render_output_folder']
-LIPSYNC_ANIMBP_PATH = CONFIG['lipsync_animbp_path']
+# ============================================================================
 
 def check_render_status(_delta_time):
     """
@@ -526,7 +481,7 @@ def main():
     unreal.log("Movie Render Queue - Automated Render with Audio Sync")
     unreal.log("=" * 60)
     unreal.log()
-    unreal.log(f"Active Preset: {CONFIG['preset']}")
+    unreal.log(f"Input Folder:  {INPUT_AUDIO_FOLDER}")
     unreal.log(f"Input Folder:  {INPUT_AUDIO_FOLDER}")
     unreal.log(f"Output Folder: {OUTPUT_FOLDER}")
     unreal.log(f"Render Folder: {RENDER_OUTPUT_FOLDER}")

@@ -274,54 +274,19 @@ class UnrealRemoteControl:
             return 1
 
 
-def load_config(preset='male_runtime'):
-    """
-    Load configuration based on preset selection.
-
-    Args:
-        preset: 'male_runtime' or 'female_runtime'
-
-    Returns:
-        dict: Configuration dictionary
-    """
-    # Get script directory for relative paths
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
+def load_config():
+    """Load configuration"""
     # ============================================================================
-    # CONFIGURATION - Update this section for your setup
+    # CONFIGURATION - Update these paths to match your Windows machine
     # ============================================================================
-
-    # Base configuration
     config = {
-        # TODO: Update this path to your Unreal Engine installation
         'ue_editor': r'C:\Users\marketing\UE_5.6\Engine\Binaries\Win64\UnrealEditor.exe',
-
-        # These are auto-configured (no changes needed)
-        'ue_python_script': os.path.join(script_dir, 'ue_render_script.py'),
+        'ue_project': r'C:\Users\marketing\Documents\Unreal Projects\male_runtime\MyMHProject.uproject',
+        'ue_python_script': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ue_render_script.py'),
         'map_name': 'NewMap',
         'remote_control_port': 30010,
         'remote_control_host': 'localhost'
     }
-
-    # ============================================================================
-    # Preset selection - Automatically configures project path based on --preset
-    #
-    # Usage:
-    #   python launch_ue_remote.py --preset male_runtime
-    #   python launch_ue_remote.py --preset female_runtime
-    #
-    # Make sure you have the corresponding UE project in:
-    #   ue_preset/male_runtime/MyMHProject.uproject
-    #   ue_preset/female_runtime/MyMHProject.uproject
-    # ============================================================================
-
-    if preset == 'male_runtime':
-        config['ue_project'] = os.path.join(script_dir, 'ue_preset', 'male_runtime', 'MyMHProject.uproject')
-    elif preset == 'female_runtime':
-        config['ue_project'] = os.path.join(script_dir, 'ue_preset', 'female_runtime', 'MyMHProject.uproject')
-    else:
-        raise ValueError(f"Unknown preset: {preset}. Choose 'male_runtime' or 'female_runtime'")
-
     return config
 
 
@@ -330,16 +295,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Launch UE and execute Python via Remote Control API',
-        epilog='Example: python launch_ue_remote.py --preset male_runtime'
-    )
-
-    parser.add_argument(
-        '--preset',
-        type=str,
-        choices=['male_runtime', 'female_runtime'],
-        default='male_runtime',
-        help='MetaHuman preset to use (default: male_runtime)'
+        description='Launch UE and execute Python via Remote Control API'
     )
 
     parser.add_argument(
@@ -369,13 +325,8 @@ def main():
 
     args = parser.parse_args()
 
-    # Load configuration based on preset
-    try:
-        config = load_config(preset=args.preset)
-        print(f"Using preset: {args.preset}")
-    except ValueError as e:
-        print(f"✗ ERROR: {e}")
-        sys.exit(1)
+    # Load configuration
+    config = load_config()
 
     # Override with command line arguments
     if args.ue_editor:
