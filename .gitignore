@@ -1,0 +1,17 @@
+# Generated audio output
+output/
+
+# UE input staging folder
+input/
+
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+env/

@@ -1,0 +1,31 @@
+# ChatterBox TTS Pipeline Requirements
+
+# Core dependencies
+# IMPORTANT: chatterbox-tts requires torch==2.6.0 and torchaudio==2.6.0
+# Install PyTorch FIRST before other dependencies:
+#   For GPU: pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+#   For CPU: pip install torch==2.6.0 torchaudio==2.6.0
+# torch==2.6.0
+# torchaudio==2.6.0
+numpy>=1.24.0,<1.26.0
+
+# ChatterBox TTS (install from source or pip)
+# Install with: pip install chatterbox-tts
+# Or: pip install -e /path/to/chatterbox/src
+chatterbox-tts>=0.1.4
+
+# Language detection
+langdetect==1.0.9
+
+# Audio processing
+pydub==0.25.1
+librosa==0.11.0
+
+# Utilities
+transformers==4.46.3
+diffusers==0.29.0
+safetensors==0.5.3
+
+# OpenAI for voice analysis (gender/emotion detection and prosody optimization)
+openai>=1.0.0
+python-dotenv>=1.0.0
