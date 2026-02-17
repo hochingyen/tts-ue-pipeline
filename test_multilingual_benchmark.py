@@ -33,7 +33,7 @@ import json
 
 # Import our modules
 from chatterbox_ue_pipeline import ChatterBoxUEPipeline
-from openai_analyzer import OpenAIVoiceAnalyzer, normalize_english_text
+from openai_analyzer import OpenAIVoiceAnalyzer
 import torch
 import torchaudio as ta
 
@@ -169,10 +169,10 @@ def benchmark_language(
         prosody_start = time.time()
         try:
             if language == "en":
-                # Step 1: Normalize English text in Python (deterministic, no LLM needed)
-                optimized_text = normalize_english_text(text)
-                print(f"  [English] Python normalization applied")
-                # Step 2: Use analyze() only for emotion detection
+                # Step 1: Use OpenAI to normalize English text (times, currency, slang, abbreviations)
+                optimized_text = analyzer.optimize_prosody(text, "en")
+                print(f"  [English] OpenAI normalization applied")
+                # Step 2: Use analyze() for emotion detection on the normalized text
                 result = analyzer.analyze(optimized_text)
                 detected_emotion = result.get("emotion", "neutral")
                 if emotion == "auto":
@@ -219,6 +219,8 @@ def benchmark_language(
     character_name = f"cpu_gpu_{language}_{emotion}"
 
     try:
+        # For English: clone professor voice. For other languages: generate natively (no voice prompt)
+        prompt_path = voice_path if language == "en" else None
         result = pipeline.generate(
             text=text,
             character_name=character_name,
@@ -227,7 +229,7 @@ def benchmark_language(
             force_gender="female",
             force_emotion=emotion,
             enable_analysis=False,
-            audio_prompt_path=voice_path  # Use professor's voice for cloning
+            audio_prompt_path=prompt_path
         )
 
         gen_time = time.time() - gen_start
