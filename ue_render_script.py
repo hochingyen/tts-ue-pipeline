@@ -100,8 +100,7 @@ def check_render_status(_delta_time):
         unreal.log("=" * 60)
 
         # Copy output file to final destination
-        if current_audio_file_path:
-            copy_output_file(current_audio_file_path)
+        copy_output_file(current_audio_file_path)
 
         unreal.SystemLibrary.quit_editor()
 
@@ -169,7 +168,11 @@ def copy_output_file(input_audio_path):
         unreal.log(f"Found rendered file: {rendered_file}")
 
         # Get the base name of the input audio file (without extension)
-        audio_basename = os.path.splitext(os.path.basename(input_audio_path))[0]
+        if input_audio_path:
+            audio_basename = os.path.splitext(os.path.basename(input_audio_path))[0]
+        else:
+            import time
+            audio_basename = f"render_{time.strftime('%Y%m%d_%H%M%S')}"
 
         # Create output filename with .mp4 extension
         output_filename = f"{audio_basename}.mp4"
