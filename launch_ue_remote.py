@@ -282,7 +282,7 @@ def load_config():
     config = {
         'ue_editor': r'C:\Users\marketing\UE_5.6\Engine\Binaries\Win64\UnrealEditor.exe',
         'ue_project': r'C:\Users\marketing\Documents\Unreal Projects\male_runtime\MyMHProject.uproject',
-        'ue_python_script': os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ue_render_script.py'),
+        'ue_python_script': os.path.join(os.path.dirname(__file__), 'ue_render_script.py'),
         'map_name': 'NewMap',
         'remote_control_port': 30010,
         'remote_control_host': 'localhost'

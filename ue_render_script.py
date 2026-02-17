@@ -60,21 +60,14 @@ render_started = False
 check_count = 0
 current_audio_file_path = None  # Store input audio path for output naming
 
-# ============================================================================
-# CONFIGURATION - Update these paths to match your setup
-# ============================================================================
-
+# Configuration
 PRESET_PATH = "/Game/Cinematics/Pending_MoviePipelinePrimaryConfig.Pending_MoviePipelinePrimaryConfig"
 LEVEL_SEQUENCE_PATH = "/Game/NewLevelSequence"
 MAP_PATH = "/Game/NewMap"
-LIPSYNC_ANIMBP_PATH = "/RuntimeMetaHumanLipSync/LipSyncData/MyLipSync_Face_AnimBP1.MyLipSync_Face_AnimBP1"
-
-# TODO: Update these three paths to match your Windows machine
-INPUT_AUDIO_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/input"
-OUTPUT_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/output"
-RENDER_OUTPUT_FOLDER = "C:/Users/marketing/Documents/Unreal Projects/male_runtime/Saved/MovieRenders"
-
-# ============================================================================
+INPUT_AUDIO_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/input"  # Windows path for UE
+OUTPUT_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/output"  # Output folder for final MP4s
+RENDER_OUTPUT_FOLDER = "C:/Users/marketing/Documents/Unreal Projects/male_runtime/Saved/MovieRenders"  # UE render output folder
+LIPSYNC_ANIMBP_PATH = "/RuntimeMetaHumanLipSync/LipSyncData/MyLipSync_Face_AnimBP1.MyLipSync_Face_AnimBP1"  # Georgy Dev Lip Sync AnimBP
 
 def check_render_status(_delta_time):
     """
@@ -480,12 +473,6 @@ def main():
     unreal.log("=" * 60)
     unreal.log("Movie Render Queue - Automated Render with Audio Sync")
     unreal.log("=" * 60)
-    unreal.log(" ")
-    unreal.log(f"Input Folder:  {INPUT_AUDIO_FOLDER}")
-    unreal.log(f"Output Folder: {OUTPUT_FOLDER}")
-    unreal.log(f"Render Folder: {RENDER_OUTPUT_FOLDER}")
-    unreal.log("=" * 60)
-    unreal.log(" ")
 
     # Check for command-line audio file argument
     audio_file_path = None
