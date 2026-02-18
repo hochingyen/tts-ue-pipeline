@@ -177,9 +177,10 @@ class ChatterBoxUEPipeline:
             print(f"[Language] Detection failed: {e}, using English")
             return "en", "English"
 
-    def analyze_text(self, text: str) -> Dict[str, str]:
+    def analyze_text(self, text: str, language: str = "en") -> Dict[str, str]:
         """
         Analyze text with OpenAI to get gender, emotion, and optimized text.
+        Works for all supported languages via a single GPT-4o call.
 
         Returns:
             {
@@ -196,9 +197,9 @@ class ChatterBoxUEPipeline:
                 "spoken_text": text
             }
 
-        print("[OpenAI] Analyzing text...")
+        print(f"[OpenAI] Analyzing text (language={language})...")
         try:
-            result = self.openai_analyzer.analyze(text)
+            result = self.openai_analyzer.analyze_and_optimize(text, language)
             print(f"[OpenAI] Gender: {result['gender']}, Emotion: {result['emotion']}")
             return result
         except Exception as e:
@@ -384,11 +385,14 @@ class ChatterBoxUEPipeline:
         print(f"ChatterBox-UE Pipeline: {text[:50]}...")
         print("=" * 70)
 
-        # Step 1: OpenAI Analysis (if enabled)
+        # Step 1: Detect language (needed before analysis)
+        detected_language = language or self.detect_language(text)[0]
+
+        # Step 2: OpenAI Analysis (if enabled)
         use_analysis = enable_analysis if enable_analysis is not None else self.enable_openai
 
         if use_analysis:
-            analysis = self.analyze_text(text)
+            analysis = self.analyze_text(text, language=detected_language)
             gender = force_gender or analysis["gender"]
             emotion = force_emotion or analysis["emotion"]
             spoken_text = analysis["spoken_text"]
@@ -403,28 +407,26 @@ class ChatterBoxUEPipeline:
             print(f"[Warning] Invalid emotion '{emotion}', using 'neutral'")
             emotion = "neutral"
 
-        # Step 2: Get emotion parameters
+        # Step 3: Get emotion parameters
         emotion_params = get_emotion_params(emotion)
 
-        # Step 3: Generate audio
+        # Step 4: Generate audio
         audio, sample_rate = self.generate_audio(
             text=spoken_text,
-            language=language,
+            language=detected_language,
             emotion_params=emotion_params,
             audio_prompt_path=audio_prompt_path
         )
 
-        # Step 4: Generate filename and paths
+        # Step 5: Generate filename and paths
         filename = self.generate_ue_filename(character_name, gender, emotion, unique_id)
         audio_path = os.path.join(output_dir, filename)
         metadata_path = os.path.join(output_dir, filename.replace(".wav", "_metadata.json"))
 
-        # Step 5: Save audio
+        # Step 6: Save audio
         self.save_audio(audio, sample_rate, audio_path)
 
-        # Step 6: Generate and save metadata
-        detected_language = language or self.detect_language(text)[0]
-
+        # Step 7: Generate and save metadata
         metadata = self.metadata_generator.generate_and_save(
             audio_path=audio_path,
             metadata_path=metadata_path,

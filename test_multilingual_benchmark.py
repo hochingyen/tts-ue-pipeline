@@ -160,38 +160,25 @@ def benchmark_language(
         print("3-Second Silence Buffer: ENABLED")
     print("=" * 80)
 
-    # Optimize text with OpenAI (if enabled)
+    # Analyze and optimize text with OpenAI (if enabled)
     prosody_time = 0
     original_text = text
     spoken_text = text
     if use_openai_prosody and analyzer:
-        print(f"\n[1/3] Optimizing prosody with OpenAI GPT-4o...")
+        print(f"\n[1/3] Analyzing and optimizing with OpenAI GPT-4o ({config['name']})...")
         prosody_start = time.time()
         try:
-            if language == "en":
-                # Step 1: Use OpenAI to normalize English text (times, currency, slang, abbreviations)
-                optimized_text = analyzer.optimize_prosody(text, "en")
-                print(f"  [English] OpenAI normalization applied")
-                # Step 2: Use analyze() for emotion detection on the normalized text
-                result = analyzer.analyze(optimized_text)
-                detected_emotion = result.get("emotion", "neutral")
-                if emotion == "auto":
-                    emotion = detected_emotion
-                    print(f"  [Auto emotion] Detected: {emotion}")
-                else:
-                    print(f"  [Manual emotion] Using '{emotion}' (OpenAI detected '{detected_emotion}')")
+            # Single call for all languages: gender + emotion + normalization + prosody
+            result = analyzer.analyze_and_optimize(text, language)
+            detected_emotion = result.get("emotion", "neutral")
+            optimized_text = result.get("spoken_text", text)
+
+            if emotion == "auto":
+                emotion = detected_emotion
+                print(f"  [Auto emotion] Detected: {emotion}")
             else:
-                # For non-English: detect emotion via analyze(), normalize text via optimize_prosody()
-                print(f"  [Non-English] Detecting emotion from text...")
-                result = analyzer.analyze(text)
-                detected_emotion = result.get("emotion", "neutral")
-                if emotion == "auto":
-                    emotion = detected_emotion
-                    print(f"  [Auto emotion] Detected: {emotion}")
-                optimized_text = analyzer.optimize_prosody(
-                    text=text,
-                    language=language
-                )
+                print(f"  [Manual emotion] Using '{emotion}' (OpenAI detected '{detected_emotion}')")
+
             prosody_time = time.time() - prosody_start
             print(f"[PROSODY] Optimized in {prosody_time:.2f}s")
             print(f"  Original:  {text[:80]}...")
@@ -199,7 +186,7 @@ def benchmark_language(
             spoken_text = optimized_text
             text = optimized_text
         except Exception as e:
-            print(f"[WARNING] Prosody optimization failed: {e}")
+            print(f"[WARNING] Analysis/optimization failed: {e}")
             print(f"   Continuing with original text")
             prosody_time = 0
 
