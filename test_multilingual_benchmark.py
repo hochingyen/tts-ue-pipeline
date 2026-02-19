@@ -520,8 +520,8 @@ def main():
     parser.add_argument(
         '--openai-model',
         type=str,
-        default='gpt-4o',
-        help='OpenAI model to use (default: gpt-4o). '
+        default='gpt-5-mini',
+        help='OpenAI model to use (default: gpt-5-mini). '
              'GPT-5: gpt-5.2, gpt-5-mini, gpt-5-nano | '
              'GPT-4: gpt-4o, gpt-4o-mini | '
              'O1: o1-preview, o1-mini'

@@ -67,7 +67,7 @@ class ChatterBoxUEPipeline:
         device: Optional[str] = None,
         openai_api_key: Optional[str] = None,
         enable_openai: bool = True,
-        openai_model: str = "gpt-4o"
+        openai_model: str = "gpt-5-mini"
     ):
         """
         Initialize ChatterBox-UE pipeline.
@@ -76,7 +76,7 @@ class ChatterBoxUEPipeline:
             device: Computing device ('cuda', 'mps', 'cpu'). Auto-detects if None.
             openai_api_key: OpenAI API key. Uses OPENAI_API_KEY env var if None.
             enable_openai: Enable OpenAI analysis (default: True)
-            openai_model: OpenAI model to use (default: gpt-4o)
+            openai_model: OpenAI model to use (default: gpt-5-mini)
                          GPT-5: gpt-5.2, gpt-5-mini, gpt-5-nano
                          GPT-4: gpt-4o, gpt-4o-mini
         """
