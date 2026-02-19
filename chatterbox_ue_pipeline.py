@@ -308,8 +308,7 @@ class ChatterBoxUEPipeline:
                         audio_prompt_path=audio_prompt_path,
                         exaggeration=emotion_params["exaggeration"],
                         cfg_weight=emotion_params["cfg_weight"],
-                        temperature=emotion_params["temperature"],
-                        max_length=2000  # Increase from default 1000 for longer sentences
+                        temperature=emotion_params["temperature"]
                     )
                 else:
                     audio = self.multilingual_model.generate(
@@ -318,8 +317,7 @@ class ChatterBoxUEPipeline:
                         audio_prompt_path=audio_prompt_path,
                         exaggeration=emotion_params["exaggeration"],
                         cfg_weight=emotion_params["cfg_weight"],
-                        temperature=emotion_params["temperature"],
-                        max_length=2000  # Increase from default 1000 for longer sentences
+                        temperature=emotion_params["temperature"]
                     )
 
                 # Convert to numpy
