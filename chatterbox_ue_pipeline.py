@@ -320,7 +320,8 @@ class ChatterBoxUEPipeline:
                 # Remove batch dimension if present
                 audio_tensor = audio_tensor.squeeze(0)
 
-            ta.save(output_path, audio_tensor, sample_rate)
+            # Save as PCM 16-bit format (compatible with wave module and UE)
+            ta.save(output_path, audio_tensor, sample_rate, encoding="PCM_S", bits_per_sample=16)
 
             print(f"[Audio] Saved: {output_path}")
         except Exception as e:

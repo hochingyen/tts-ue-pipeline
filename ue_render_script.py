@@ -385,6 +385,58 @@ def setup_and_render_with_preset(sequence_path, preset_path, map_path, audio_fil
         unreal.log("  - Output: 3840x2160 (4K) @ 30fps")
         unreal.log("  - Command Line Encoder: Enabled (deletes source PNGs)")
 
+        # CRITICAL FIX: Override frame range to match sequence playback range
+        # The preset has hardcoded frame ranges that we need to override
+        if audio_file_path and audio_duration is not None:
+            try:
+                # Get sequence playback range that we just adjusted
+                playback_start = sequence.get_playback_start()
+                playback_end = sequence.get_playback_end()
+
+                frame_rate = sequence.get_display_rate()
+                fps = frame_rate.numerator / frame_rate.denominator
+                duration_seconds = (playback_end - playback_start) / fps
+
+                unreal.log(f"\n[CRITICAL FIX] Overriding job frame range to match audio:")
+                unreal.log(f"  Sequence playback range: {playback_start} to {playback_end} frames")
+                unreal.log(f"  Duration: {duration_seconds:.2f} seconds @ {fps} fps")
+
+                # Find all settings in the job config
+                all_settings = job_config.get_all_settings()
+
+                # Look for MoviePipelineOutputSetting which controls frame range
+                for setting in all_settings:
+                    setting_class = setting.get_class().get_name()
+
+                    # Try to set custom frame range on output setting
+                    if 'OutputSetting' in setting_class or 'FrameRange' in setting_class:
+                        try:
+                            # Try to enable custom playback range
+                            if hasattr(setting, 'use_custom_playback_range'):
+                                setting.use_custom_playback_range = True
+                                unreal.log(f"  Found setting: {setting_class}")
+                                unreal.log(f"  ✓ Enabled custom playback range")
+
+                            # Set custom start frame
+                            if hasattr(setting, 'custom_start_frame'):
+                                setting.custom_start_frame = int(playback_start)
+                                unreal.log(f"  ✓ Set custom_start_frame = {playback_start}")
+
+                            # Set custom end frame
+                            if hasattr(setting, 'custom_end_frame'):
+                                setting.custom_end_frame = int(playback_end)
+                                unreal.log(f"  ✓ Set custom_end_frame = {playback_end}")
+
+                        except Exception as e:
+                            unreal.log_warning(f"  Could not modify {setting_class}: {e}")
+
+                unreal.log(f"✓ Frame range override completed")
+
+            except Exception as e:
+                unreal.log_error(f"Failed to override frame range: {e}")
+                import traceback
+                unreal.log_error(traceback.format_exc())
+
         # Note: Encoder settings come from preset
         # If videos aren't playable, add "-pix_fmt yuv420p" to Project Settings instead
 

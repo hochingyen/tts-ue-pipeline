@@ -137,8 +137,8 @@ def add_silence_to_audio(
         audio_with_silence = torch.cat([waveform, silence], dim=1)
         print(f"    New audio length: {audio_with_silence.shape[1]} samples")
 
-        # Save back to same file
-        ta.save(audio_file, audio_with_silence, sr)
+        # Save back to same file as PCM 16-bit format (compatible with wave module and UE)
+        ta.save(audio_file, audio_with_silence, sr, encoding="PCM_S", bits_per_sample=16)
         print(f"  [SUCCESS] Added {silence_seconds}s silence")
 
         return True
