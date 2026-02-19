@@ -210,6 +210,50 @@ class ChatterBoxUEPipeline:
                 "spoken_text": text
             }
 
+    def _split_into_sentences(self, text: str, language: str) -> list[str]:
+        """
+        Split text into sentences based on language-specific punctuation.
+        Helps prevent autoregressive repetition in long texts.
+
+        Args:
+            text: Input text
+            language: Language code
+
+        Returns:
+            List of sentences
+        """
+        import re
+
+        # Language-specific sentence delimiters
+        if language in ["zh", "ja"]:
+            # Chinese/Japanese: 。！？
+            pattern = r'([。！？]+)'
+        elif language == "ar":
+            # Arabic: . ! ؟
+            pattern = r'([.!؟]+)'
+        else:
+            # Latin scripts: . ! ?
+            pattern = r'([.!?]+)'
+
+        # Split but keep delimiters
+        parts = re.split(pattern, text)
+
+        # Rejoin delimiter with preceding text
+        sentences = []
+        for i in range(0, len(parts) - 1, 2):
+            sentence = parts[i]
+            if i + 1 < len(parts):
+                sentence += parts[i + 1]
+            sentence = sentence.strip()
+            if sentence:
+                sentences.append(sentence)
+
+        # Add last part if no delimiter at end
+        if len(parts) % 2 == 1 and parts[-1].strip():
+            sentences.append(parts[-1].strip())
+
+        return sentences if sentences else [text]
+
     def generate_audio(
         self,
         text: str,
@@ -218,12 +262,13 @@ class ChatterBoxUEPipeline:
         audio_prompt_path: Optional[str] = None
     ) -> Tuple[np.ndarray, int]:
         """
-        Generate audio from text using ChatterBox TTS.
+        Generate audio from text using ChatterBox TTS with sentence-level chunking.
 
         Args:
             text: Text to synthesize (should be prosody-optimized)
             language: Language code (auto-detect if None)
             emotion_params: Dict with exaggeration, temperature, cfg_weight
+            audio_prompt_path: Optional reference audio for voice cloning
 
         Returns:
             (audio_array, sample_rate)
@@ -240,39 +285,54 @@ class ChatterBoxUEPipeline:
                 "cfg_weight": 0.5
             }
 
+        # Split text into sentences to prevent autoregressive repetition
+        sentences = self._split_into_sentences(text, language)
+
         print(f"[TTS] Generating audio...")
+        print(f"[TTS] Sentences: {len(sentences)}")
         print(f"[TTS] Parameters: exag={emotion_params['exaggeration']:.2f}, "
               f"temp={emotion_params['temperature']:.2f}, cfg={emotion_params['cfg_weight']:.2f}")
 
         try:
-            # Use English model for English, multilingual for others
-            if language == "en":
-                # English model doesn't take language parameter
-                audio = self.english_model.generate(
-                    text=text,
-                    audio_prompt_path=audio_prompt_path,
-                    exaggeration=emotion_params["exaggeration"],
-                    cfg_weight=emotion_params["cfg_weight"],
-                    temperature=emotion_params["temperature"]
-                )
-            else:
-                # Multilingual model requires language_id
-                audio = self.multilingual_model.generate(
-                    text=text,
-                    language_id=language,
-                    audio_prompt_path=audio_prompt_path,
-                    exaggeration=emotion_params["exaggeration"],
-                    cfg_weight=emotion_params["cfg_weight"],
-                    temperature=emotion_params["temperature"]
-                )
+            audio_chunks = []
+            sample_rate = 24000
 
-            # Convert to numpy array and get sample rate
-            if isinstance(audio, torch.Tensor):
-                audio_np = audio.cpu().numpy()
-            else:
-                audio_np = np.array(audio)
+            for i, sentence in enumerate(sentences, 1):
+                if len(sentences) > 1:
+                    print(f"  [{i}/{len(sentences)}] {sentence[:60]}...")
 
-            sample_rate = 24000  # ChatterBox default
+                # Use English model for English, multilingual for others
+                if language == "en":
+                    audio = self.english_model.generate(
+                        text=sentence,
+                        audio_prompt_path=audio_prompt_path,
+                        exaggeration=emotion_params["exaggeration"],
+                        cfg_weight=emotion_params["cfg_weight"],
+                        temperature=emotion_params["temperature"]
+                    )
+                else:
+                    audio = self.multilingual_model.generate(
+                        text=sentence,
+                        language_id=language,
+                        audio_prompt_path=audio_prompt_path,
+                        exaggeration=emotion_params["exaggeration"],
+                        cfg_weight=emotion_params["cfg_weight"],
+                        temperature=emotion_params["temperature"]
+                    )
+
+                # Convert to numpy
+                if isinstance(audio, torch.Tensor):
+                    audio_np = audio.cpu().numpy()
+                else:
+                    audio_np = np.array(audio)
+
+                audio_chunks.append(audio_np)
+
+            # Concatenate all chunks
+            if len(audio_chunks) > 1:
+                audio_np = np.concatenate(audio_chunks)
+            else:
+                audio_np = audio_chunks[0]
 
             print(f"[TTS] Audio generated: {len(audio_np)} samples @ {sample_rate} Hz")
             return audio_np, sample_rate

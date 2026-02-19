@@ -178,13 +178,20 @@ URLs:
 - Long URLs: "the web address on screen"
 
 PROSODY — add punctuation for natural ChatterBox TTS delivery:
-- Use (..) for natural breathing pauses between clauses
-- Break sentences longer than 15–20 words into shorter ones using periods
+
+CRITICAL: You MUST add (..) pauses and break long sentences. This is required for all languages.
+
+- Use (..) for natural breathing pauses between clauses (REQUIRED - add at least 3-5 per long sentence)
+- Break sentences longer than 15–20 words into shorter ones using periods (REQUIRED)
 - Keep all existing ! and ? marks
 - For emphasis on 1–2 key words: use CAPITALIZATION if appropriate for {lang_name}
 - Use proper {lang_name} punctuation: {punctuation}
 - Preserve ALL content — do NOT remove or omit any words or sentences
-- Do NOT add rhetorical questions unless in original text"""
+- Do NOT add rhetorical questions unless in original text
+
+Example (showing required prosody additions):
+- Input:  "الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً"
+- Output: "الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ.. فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً." """
 
         user_prompt = f"Text:\n<<<\n{text}\n>>>"
 
