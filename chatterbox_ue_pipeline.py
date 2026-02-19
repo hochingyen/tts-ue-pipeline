@@ -326,11 +326,17 @@ class ChatterBoxUEPipeline:
                 else:
                     audio_np = np.array(audio)
 
+                # Ensure consistent shape: (channels, samples)
+                if audio_np.ndim == 1:
+                    audio_np = audio_np.reshape(1, -1)
+                elif audio_np.ndim == 3:
+                    audio_np = audio_np.squeeze(0)
+
                 audio_chunks.append(audio_np)
 
-            # Concatenate all chunks
+            # Concatenate all chunks along the samples axis (axis=1)
             if len(audio_chunks) > 1:
-                audio_np = np.concatenate(audio_chunks)
+                audio_np = np.concatenate(audio_chunks, axis=1)
             else:
                 audio_np = audio_chunks[0]
 
