@@ -179,17 +179,18 @@ URLs:
 
 PROSODY — add punctuation for natural ChatterBox TTS delivery:
 
-CRITICAL: You MUST add (..) pauses and break long sentences. This is required for all languages.
+CRITICAL: You MUST add (..) pauses within sentences. This is required for all languages.
 
-- Use (..) for natural breathing pauses between clauses (REQUIRED - add at least 3-5 per long sentence)
-- Break sentences longer than 15–20 words into shorter ones using periods (REQUIRED)
+- Add (..) for breathing pauses every 15-20 words within long sentences (REQUIRED)
+- Add (..) after introductory phrases, before conjunctions, between clauses
+- Keep existing sentence boundaries (. ! ?) intact — do NOT artificially break sentences
 - Keep all existing ! and ? marks
-- For emphasis on 1–2 key words: use CAPITALIZATION if appropriate for {lang_name}
+- For emphasis on 1-2 key words: use CAPITALIZATION if appropriate for {lang_name}
 - Use proper {lang_name} punctuation: {punctuation}
 - Preserve ALL content — do NOT remove or omit any words or sentences
 - Do NOT add rhetorical questions unless in original text
 
-Example (showing required prosody additions):
+Example (showing required (..) pauses within a sentence):
 - Input:  "الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً"
 - Output: "الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ.. فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً." """
 
