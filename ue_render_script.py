@@ -58,6 +58,7 @@ import unreal
 active_executor = None
 render_started = False
 check_count = 0
+current_audio_file_path = None  # Store audio path for trimming video
 
 # Configuration
 PRESET_PATH = "/Game/Cinematics/Pending_MoviePipelinePrimaryConfig.Pending_MoviePipelinePrimaryConfig"
@@ -67,11 +68,101 @@ INPUT_AUDIO_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/out
 RENDER_OUTPUT_FOLDER = "C:/Users/marketing/Documents/Unreal Projects/male_runtime/Saved/MovieRenders"  # UE render output folder
 LIPSYNC_ANIMBP_PATH = "/RuntimeMetaHumanLipSync/LipSyncData/MyLipSync_Face_AnimBP1.MyLipSync_Face_AnimBP1"  # Georgy Dev Lip Sync AnimBP
 
+def trim_video_to_audio_length(video_path, audio_path):
+    """
+    Trim the rendered video to match the audio duration using ffmpeg.
+
+    Args:
+        video_path: Path to the rendered MP4 file
+        audio_path: Path to the audio WAV file (to get duration)
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        import subprocess
+        import wave
+        import os
+
+        unreal.log("=" * 60)
+        unreal.log("Trimming video to match audio duration...")
+        unreal.log("=" * 60)
+
+        # Check if files exist
+        if not os.path.exists(video_path):
+            unreal.log_error(f"Video file not found: {video_path}")
+            return False
+
+        if not os.path.exists(audio_path):
+            unreal.log_error(f"Audio file not found: {audio_path}")
+            return False
+
+        # Get audio duration
+        with wave.open(audio_path, 'rb') as wav_file:
+            frames = wav_file.getnframes()
+            rate = wav_file.getframerate()
+            audio_duration = frames / float(rate)
+
+        unreal.log(f"  Audio duration: {audio_duration:.2f} seconds")
+        unreal.log(f"  Video file: {os.path.basename(video_path)}")
+
+        # Create temporary output path
+        video_dir = os.path.dirname(video_path)
+        video_name = os.path.basename(video_path)
+        temp_output = os.path.join(video_dir, f"temp_{video_name}")
+
+        # Use ffmpeg to trim video
+        # -t: duration in seconds
+        # -c copy: copy codec (fast, no re-encoding)
+        cmd = [
+            'ffmpeg',
+            '-i', video_path,           # Input video
+            '-t', str(audio_duration),  # Trim to audio duration
+            '-c', 'copy',               # Copy streams (no re-encode)
+            '-y',                       # Overwrite output
+            temp_output
+        ]
+
+        unreal.log(f"  Running ffmpeg to trim video...")
+        unreal.log(f"  Command: {' '.join(cmd)}")
+
+        # Run ffmpeg
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+
+        if result.returncode != 0:
+            unreal.log_error(f"ffmpeg failed with return code {result.returncode}")
+            unreal.log_error(f"stderr: {result.stderr}")
+            return False
+
+        # Replace original with trimmed version
+        os.replace(temp_output, video_path)
+
+        unreal.log(f"✓ Video trimmed successfully!")
+        unreal.log(f"  Final duration: {audio_duration:.2f} seconds")
+        unreal.log("=" * 60)
+
+        return True
+
+    except subprocess.TimeoutExpired:
+        unreal.log_error("ffmpeg timed out after 5 minutes")
+        return False
+    except Exception as e:
+        unreal.log_error(f"Failed to trim video: {str(e)}")
+        import traceback
+        unreal.log_error(traceback.format_exc())
+        return False
+
+
 def check_render_status(_delta_time):
     """
     Sentry tick callback - stays alive until rendering ends.
     """
-    global active_executor, render_started, check_count
+    global active_executor, render_started, check_count, current_audio_file_path
 
     if not active_executor:
         return
@@ -96,6 +187,26 @@ def check_render_status(_delta_time):
         unreal.log("=" * 60)
         unreal.log("!!! RENDERING COMPLETE !!!")
         unreal.log("=" * 60)
+
+        # Trim the video to match audio duration
+        if current_audio_file_path:
+            import os
+            import glob
+
+            # Find the rendered MP4
+            mp4_files = glob.glob(os.path.join(RENDER_OUTPUT_FOLDER, "*.mp4"))
+            if mp4_files:
+                # Get newest MP4 (just rendered)
+                mp4_files.sort(key=os.path.getmtime, reverse=True)
+                video_path = mp4_files[0]
+
+                unreal.log(f"Found rendered video: {os.path.basename(video_path)}")
+
+                # Trim it to match audio
+                trim_video_to_audio_length(video_path, current_audio_file_path)
+            else:
+                unreal.log_warning("No MP4 files found in render output folder")
+
         unreal.SystemLibrary.quit_editor()
 
 
@@ -295,7 +406,10 @@ def setup_and_render_with_preset(sequence_path, preset_path, map_path, audio_fil
         audio_file_path: Optional path to a WAV file to replace the audio in the sequence
     """
     try:
-        global active_executor
+        global active_executor, current_audio_file_path
+
+        # Store audio path for video trimming after render
+        current_audio_file_path = audio_file_path
 
         # Clean the render output folder before starting
         unreal.log("=" * 60)
@@ -385,57 +499,8 @@ def setup_and_render_with_preset(sequence_path, preset_path, map_path, audio_fil
         unreal.log("  - Output: 3840x2160 (4K) @ 30fps")
         unreal.log("  - Command Line Encoder: Enabled (deletes source PNGs)")
 
-        # CRITICAL FIX: Override frame range to match sequence playback range
-        # The preset has hardcoded frame ranges that we need to override
-        if audio_file_path and audio_duration is not None:
-            try:
-                # Get sequence playback range that we just adjusted
-                playback_start = sequence.get_playback_start()
-                playback_end = sequence.get_playback_end()
-
-                frame_rate = sequence.get_display_rate()
-                fps = frame_rate.numerator / frame_rate.denominator
-                duration_seconds = (playback_end - playback_start) / fps
-
-                unreal.log(f"\n[CRITICAL FIX] Overriding job frame range to match audio:")
-                unreal.log(f"  Sequence playback range: {playback_start} to {playback_end} frames")
-                unreal.log(f"  Duration: {duration_seconds:.2f} seconds @ {fps} fps")
-
-                # Find all settings in the job config
-                all_settings = job_config.get_all_settings()
-
-                # Look for MoviePipelineOutputSetting which controls frame range
-                for setting in all_settings:
-                    setting_class = setting.get_class().get_name()
-
-                    # Try to set custom frame range on output setting
-                    if 'OutputSetting' in setting_class or 'FrameRange' in setting_class:
-                        try:
-                            # Try to enable custom playback range
-                            if hasattr(setting, 'use_custom_playback_range'):
-                                setting.use_custom_playback_range = True
-                                unreal.log(f"  Found setting: {setting_class}")
-                                unreal.log(f"  ✓ Enabled custom playback range")
-
-                            # Set custom start frame
-                            if hasattr(setting, 'custom_start_frame'):
-                                setting.custom_start_frame = int(playback_start)
-                                unreal.log(f"  ✓ Set custom_start_frame = {playback_start}")
-
-                            # Set custom end frame
-                            if hasattr(setting, 'custom_end_frame'):
-                                setting.custom_end_frame = int(playback_end)
-                                unreal.log(f"  ✓ Set custom_end_frame = {playback_end}")
-
-                        except Exception as e:
-                            unreal.log_warning(f"  Could not modify {setting_class}: {e}")
-
-                unreal.log(f"✓ Frame range override completed")
-
-            except Exception as e:
-                unreal.log_error(f"Failed to override frame range: {e}")
-                import traceback
-                unreal.log_error(traceback.format_exc())
+        # Note: Video will be trimmed to audio duration after rendering using ffmpeg
+        # This is simpler than trying to override UE's frame range settings
 
         # Note: Encoder settings come from preset
         # If videos aren't playable, add "-pix_fmt yuv420p" to Project Settings instead
