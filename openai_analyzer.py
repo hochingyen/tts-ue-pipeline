@@ -222,57 +222,45 @@ Output: "الدُّكْتُورُ أُوبْرَايِنُ.. قَرَأَ الْ
 
 If you return identical text without (..) pauses, the TTS will fail."""
 
-        max_retries = 2
-        for attempt in range(max_retries):
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    temperature=0.7 + (attempt * 0.1),  # Increase temp on retry
-                    response_format={"type": "json_object"}
-                )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.7,
+                response_format={"type": "json_object"}
+            )
 
-                result = json.loads(response.choices[0].message.content)
-                self._validate_result(result)
+            result = json.loads(response.choices[0].message.content)
+            self._validate_result(result)
 
-                # Clean up spacing artifacts
-                result["spoken_text"] = self._cleanup_text_spacing(result["spoken_text"])
+            # Clean up spacing artifacts
+            result["spoken_text"] = self._cleanup_text_spacing(result["spoken_text"])
 
-                # Validate that prosody was actually added
-                if result["spoken_text"].strip() == text.strip():
-                    print(f"[Warning] Attempt {attempt+1}/{max_retries}: spoken_text identical to input, no prosody added")
-                    if attempt < max_retries - 1:
-                        print(f"[Retry] Retrying with higher temperature...")
-                        user_prompt = f"""Text to analyze and optimize:
+            # Validate that prosody was actually added
+            if result["spoken_text"].strip() == text.strip():
+                print("\n" + "="*80)
+                print("⚠️  WARNING: OpenAI model failed to add prosody pauses!")
+                print("="*80)
+                print(f"Model: {self.model}")
+                print("Problem: spoken_text is identical to input (no .. pauses added)")
+                print("Impact: ChatterBox may generate incomplete audio due to repetition")
+                print("\nSuggested fixes:")
+                print("  1. Use gpt-5.2 instead: --openai-model gpt-5.2")
+                print("  2. Or disable OpenAI and use raw text (faster, less accurate)")
+                print("="*80 + "\n")
 
-<<<
-{text}
->>>
+            return result
 
-WARNING: Previous attempt returned IDENTICAL text without pauses.
-You MUST add (..) pauses at natural break points.
-
-Example (showing (..) pauses REQUIRED):
-"الدُّكْتُورُ أُوبْرَايِنُ.. قَرَأَ الْمَقَالَ الرَّئِيسِيَّ.. فِي السَّاعَةِ الثَّالِثَةِ."
-
-Add (..) pauses NOW or the TTS will fail completely."""
-                        continue
-                    else:
-                        print(f"[Warning] All retries failed to add prosody, using original text")
-
-                return result
-
-            except Exception as e:
-                print(f"[OpenAI Analysis Error] Attempt {attempt+1}/{max_retries}: {e}")
-                if attempt == max_retries - 1:
-                    return {
-                        "gender": "female",
-                        "emotion": "neutral",
-                        "spoken_text": text
-                    }
+        except Exception as e:
+            print(f"[OpenAI Analysis Error] {e}")
+            return {
+                "gender": "female",
+                "emotion": "neutral",
+                "spoken_text": text
+            }
 
     def _validate_result(self, result: Dict[str, str]) -> None:
         """Validate OpenAI response format."""
