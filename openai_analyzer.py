@@ -186,14 +186,17 @@ URLs:
 PROSODY — add punctuation for natural ChatterBox TTS delivery:
 
 CRITICAL REQUIREMENT - spoken_text MUST BE DIFFERENT from input:
-- You MUST add (..) pauses within EVERY long sentence (15+ words)
+- You MUST add (..) pauses at natural linguistic break points
 - spoken_text that is identical to input text is INCORRECT and will be rejected
 - The (..) pauses are MANDATORY for TTS breathing and preventing audio glitches
 
-Prosody rules:
-- Add (..) for breathing pauses every 15-20 words within long sentences (REQUIRED)
-- Add (..) after introductory phrases, before conjunctions, between clauses
-- Minimum: at least 2-3 (..) pauses per paragraph
+Prosody rules - use your linguistic intelligence to identify natural pause points:
+- Add (..) after introductory phrases
+- Add (..) before conjunctions (and, but, or, because, etc.)
+- Add (..) between independent clauses
+- Add (..) after transitional words/phrases
+- Add (..) where a speaker would naturally pause to breathe
+- Long sentences should have multiple (..) pauses for natural flow
 - Keep existing sentence boundaries (. ! ?) intact — do NOT artificially break sentences
 - Keep all existing ! and ? marks
 - For emphasis on 1-2 key words: use CAPITALIZATION if appropriate for {lang_name}
@@ -201,7 +204,7 @@ Prosody rules:
 - Preserve ALL content — do NOT remove or omit any words or sentences
 - Do NOT add rhetorical questions unless in original text
 
-Example (MANDATORY format - note the (..) pauses added):
+Example (note the (..) pauses added at natural linguistic breaks):
 - Input:  "الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً عَنْ صَيْدِ السَّمَكِ"
 - Output: "الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ.. فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً.. عَنْ صَيْدِ السَّمَكِ." """
 
