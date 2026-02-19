@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 """
-Multilingual Voice Cloning Benchmark - GPU Generation with Voice Cloning
+Multilingual TTS Generation with Voice Cloning
 
-Uses CPU to load prof_1min.wav voice file once, then generates TTS
-for 5 languages (English, Chinese, Japanese, Arabic, Spanish) on GPU.
+Generate high-quality TTS audio with voice cloning support for 23 languages.
 
 Features:
+- Two text input modes: Keyboard input or JSON file
 - OpenAI prosody optimization for natural speech
-- 3-second silence buffer at end of each audio file
+- 3-second silence buffer at end of audio
 - Emotion control via --emotion flag
-- Simple output naming: cpu_gpu_language_emotion.wav
+- GPU acceleration support
 
 Usage:
+    # Single language - Keyboard input (interactive)
+    python test_multilingual_benchmark.py --language ar --use-openai-prosody
+
+    # Single language - JSON file input
+    python test_multilingual_benchmark.py --language en --text-input-json my_texts.json
+
+    # Multiple languages - JSON file required
+    python test_multilingual_benchmark.py --all --text-input-json example_texts.json --use-openai-prosody
+
     # Windows - Specify GPU device
     set CUDA_VISIBLE_DEVICES=1
-    python test_multilingual_benchmark.py --all --use-openai-prosody
-
-    # Test specific language with specific emotion
-    python test_multilingual_benchmark.py --language en --emotion happy --use-openai-prosody
-
-    # Test without OpenAI (faster, but less natural)
-    python test_multilingual_benchmark.py --all --emotion calm
+    python test_multilingual_benchmark.py --language zh --use-openai-prosody
 """
 
 import os
@@ -42,29 +45,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'config'))
 from language_config import SUPPORTED_LANGUAGES
 
 
-# Multilingual test texts (Dr. O'Brien passage translated)
-MULTILINGUAL_TEXTS = {
-    'en': {
-        'name': 'English',
-        'text': "Dr. O'Brien read the lead article at 3:45 PM about bass fishing in 1999. The tear in her eye appeared as she tried to tear the paper. The WWW address costs $99.99 plus 15% tax. Will the invalid's invalid license be close enough to close the door? The dove dove into the bushes. LOL!"
-    },
-    'es': {
-        'name': 'Spanish',
-        'text': 'El Doctor O\'Brien leyó el artículo principal a las tres y cuarenta y cinco de la tarde sobre la pesca de lubina en mil novecientos noventa y nueve. La lágrima en su ojo apareció mientras intentaba rasgar el papel. La dirección doble uve doble uve doble uve cuesta noventa y nueve con noventa y nueve dólares más quince por ciento de impuesto. ¿Estará la licencia inválida del inválido lo suficientemente cerca para cerrar la puerta? La paloma se lanzó a los arbustos... ¡JAJA!'
-    },
-    'zh': {
-        'name': 'Chinese',
-        'text': '奥布莱恩博士在下午三点四十五分阅读了一九九九年关于鲈鱼钓鱼的头条文章。她试图撕开报纸时，眼中流露出泪水。万维网地址的费用是九十九点九九美元，加上百分之十五的税。残疾人的无效驾照是否足够接近以关闭门鸽子飞入了灌木丛中。哈哈！'
-    },
-    'ja': {
-        'name': 'Japanese',
-        'text': 'オブライエン博士は、午後三時四十五分に、一九九九年のバス釣りについての主要記事を読みました。彼女がその紙を破ろうとしたとき、彼女の目に涙が浮かびました。ダブリューダブリューダブリューのアドレスは、九十九ドル九十九セントに、十五パーセントの税金がかかります。無効な免許証は、ドアを閉めるのに十分近いでしょうか？ハトは茂みに飛び込みました。笑い！'
-    },
-    'ar': {
-        'name': 'Arabic',
-        'text': 'الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً عَنْ صَيْدِ السَّمَكِ فِي عَامِ أَلْفٍ وَتِسْعِمِائَةٍ وَتِسْعٍ وَتِسْعِينَ. ظَهَرَتِ الدُّمُوعُ فِي عَيْنَيْهَا عِنْدَمَا حَاوَلَتْ تَمْزِيقَ الْوَرَقَةِ. عُنْوَانُ الشَّبَكَةِ الْعَالَمِيَّةِ يُكَلِّفُ تِسْعَةً وَتِسْعِينَ دُولَارًا وَتِسْعَةً وَتِسْعِينَ سِنْتًا، بِالْإِضَافَةِ إِلَى خَمْسَةَ عَشَرَ بِالْمِئَةِ ضَرِيبَةً. هَلْ سَتَكُونُ رُخْصَةُ الْمُعَاقِينَ غَيْرُ الصَّالِحَةِ قَرِيبَةً بِمَا يَكْفِي لِإِغْلَاقِ الْبَابِ؟ الْحَمَامَةُ انْقَضَّتْ إِلَى الشُّجَيْرَاتِ. هَاهَا!'
-    }
-}
 
 
 def show_language_menu() -> str:
@@ -186,36 +166,129 @@ def set_gpu_device(gpu_id: int = None):
         print("No GPU device specified, using default")
 
 
-def benchmark_language(
+def get_text_input(language: str, lang_name: str) -> str:
+    """
+    Get text input from user via keyboard (interactive mode).
+
+    Args:
+        language: Language code
+        lang_name: Full language name for display
+
+    Returns:
+        User-provided text string
+    """
+    print("\n" + "=" * 80)
+    print(f"TEXT INPUT - {lang_name} ({language})")
+    print("=" * 80)
+    print("\nEnter your text below (press Ctrl+D on Mac/Linux or Ctrl+Z on Windows when done):")
+    print("TIP: For multi-line text, keep typing. Press Enter for new lines.")
+    print("-" * 80)
+
+    lines = []
+    try:
+        while True:
+            line = input()
+            lines.append(line)
+    except EOFError:
+        pass
+    except KeyboardInterrupt:
+        print("\n\nInput cancelled.")
+        sys.exit(0)
+
+    text = '\n'.join(lines).strip()
+
+    if not text:
+        print("\n[ERROR] No text provided!")
+        sys.exit(1)
+
+    print("\n" + "-" * 80)
+    print(f"[INPUT] Received {len(text)} characters")
+    print(f"[PREVIEW] {text[:100]}{'...' if len(text) > 100 else ''}")
+    print("=" * 80)
+
+    return text
+
+
+def load_texts_from_json(json_path: str) -> Dict:
+    """
+    Load multilingual texts from JSON file.
+
+    Expected format:
+    {
+        "en": {"name": "English", "text": "..."},
+        "es": {"name": "Spanish", "text": "..."},
+        ...
+    }
+
+    Args:
+        json_path: Path to JSON file
+
+    Returns:
+        Dictionary in MULTILINGUAL_TEXTS format
+    """
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        print(f"\n[JSON] Loaded {len(data)} language(s) from {json_path}")
+        for lang_code, lang_data in data.items():
+            lang_name = lang_data.get('name', lang_code)
+            text_len = len(lang_data.get('text', ''))
+            print(f"  [{lang_code}] {lang_name}: {text_len} characters")
+
+        return data
+
+    except FileNotFoundError:
+        print(f"\n[ERROR] JSON file not found: {json_path}")
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"\n[ERROR] Invalid JSON format: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n[ERROR] Failed to load JSON: {e}")
+        sys.exit(1)
+
+
+def generate_language(
     language: str,
     pipeline: ChatterBoxUEPipeline,
     voice_path: str,
     output_dir: str,
     emotion: str = "auto",
     use_openai_prosody: bool = False,
-    analyzer: OpenAIVoiceAnalyzer = None
+    analyzer: OpenAIVoiceAnalyzer = None,
+    text_source: Dict = None,
+    custom_text: str = None
 ) -> Dict:
     """
-    Benchmark TTS generation for a specific language using GPU with voice cloning.
+    Generate TTS for a specific language using GPU with voice cloning.
 
     Args:
-        language: Language code ('zh', 'ja', 'ar', 'es')
+        language: Language code ('zh', 'ja', 'ar', 'es', etc.)
         pipeline: Pre-initialized ChatterBox pipeline (on GPU)
         voice_path: Path to professor voice file for cloning
         output_dir: Output directory for generated audio
-        emotion: Emotion for TTS generation (default: "serious")
+        emotion: Emotion for TTS generation (default: "auto")
         use_openai_prosody: Use OpenAI to optimize prosody
         analyzer: Pre-initialized OpenAI analyzer (if prosody enabled)
+        text_source: Dictionary of texts from JSON file
+        custom_text: Direct text string from keyboard input
 
     Returns:
-        Dictionary with benchmark results
+        Dictionary with generation results
     """
-    if language not in MULTILINGUAL_TEXTS:
-        raise ValueError(f"Unsupported language: {language}")
-
-    config = MULTILINGUAL_TEXTS[language]
-    text = config['text']
-    lang_name = config['name']
+    # Determine text source priority: custom_text > text_source
+    if custom_text:
+        text = custom_text
+        lang_name = SUPPORTED_LANGUAGES.get(language, language)
+        print(f"\n[Text Source] Keyboard input ({len(text)} chars)")
+    elif text_source and language in text_source:
+        config = text_source[language]
+        text = config['text']
+        lang_name = config['name']
+        print(f"\n[Text Source] JSON file ({len(text)} chars)")
+    else:
+        raise ValueError(f"No text provided for language: {language}")
 
     print("\n" + "=" * 80)
     print(f"Generating: {lang_name}")
@@ -384,10 +457,10 @@ def print_results_table(results: List[Dict]):
     Print a formatted results table.
 
     Args:
-        results: List of benchmark result dictionaries
+        results: List of generation result dictionaries
     """
     print("\n" + "=" * 100)
-    print("[RESULTS] MULTILINGUAL TTS GENERATION RESULTS (GPU with Voice Cloning)")
+    print("[RESULTS] MULTILINGUAL TTS GENERATION RESULTS")
     print("=" * 100)
 
     # Check if OpenAI prosody was used
@@ -438,20 +511,20 @@ def print_results_table(results: List[Dict]):
             print(f"  Average prosody time: {avg_prosody:.2f}s")
         print(f"  Average generation time: {avg_gen:.2f}s")
         print(f"  Average total time: {avg_total:.2f}s")
-        print(f"  Languages generated: {successful}/4")
+        print(f"  Successful generations: {successful}")
 
     print("=" * 100)
 
 
 def save_results(results: List[Dict], output_dir: str):
     """
-    Save benchmark results to JSON file.
+    Save generation results to JSON file.
 
     Args:
-        results: List of benchmark results
+        results: List of generation results
         output_dir: Output directory
     """
-    results_file = os.path.join(output_dir, 'multilingual_benchmark_results.json')
+    results_file = os.path.join(output_dir, 'multilingual_generation_results.json')
 
     with open(results_file, 'w', encoding='utf-8') as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
@@ -461,7 +534,7 @@ def save_results(results: List[Dict], output_dir: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Multilingual Voice Cloning Benchmark - GPU Generation"
+        description="Multilingual TTS Generation with Voice Cloning - Supports keyboard and JSON file input"
     )
 
     parser.add_argument(
@@ -473,7 +546,7 @@ def main():
     parser.add_argument(
         '--all',
         action='store_true',
-        help='Test all benchmark languages (en, zh, ja, ar, es)'
+        help='Generate TTS for all languages in JSON file (requires --text-input-json)'
     )
 
     parser.add_argument(
@@ -527,6 +600,12 @@ def main():
              'O1: o1-preview, o1-mini'
     )
 
+    parser.add_argument(
+        '--text-input-json',
+        type=str,
+        help='Path to JSON file with texts (format: {"en": {"name": "English", "text": "..."}, ...}). Required for --all mode.'
+    )
+
     args = parser.parse_args()
 
     # Interactive mode: if no language specified and --all not used
@@ -542,21 +621,30 @@ def main():
     if args.language and args.all:
         parser.error("Cannot specify both --language and --all")
 
+    # Load texts from JSON if provided
+    text_source = None
+    if args.text_input_json:
+        text_source = load_texts_from_json(args.text_input_json)
+
     # Determine which languages to test
     if args.all:
-        languages = ['en', 'zh', 'ja', 'ar', 'es']
-        print("[START] Generating TTS for ALL benchmark languages (5 total) with voice cloning...")
-    else:
-        # Check if language has test text in MULTILINGUAL_TEXTS
-        if args.language in MULTILINGUAL_TEXTS:
-            languages = [args.language]
-            print(f"[START] Generating TTS for {MULTILINGUAL_TEXTS[args.language]['name']} with benchmark text...")
-        elif args.language in SUPPORTED_LANGUAGES:
-            # Language is supported but doesn't have benchmark text
-            print(f"[ERROR] Language '{args.language}' ({SUPPORTED_LANGUAGES[args.language]}) is supported")
-            print(f"        but doesn't have benchmark test text in MULTILINGUAL_TEXTS.")
-            print(f"\nAvailable benchmark languages: {', '.join(MULTILINGUAL_TEXTS.keys())}")
+        # For --all mode, JSON file is required
+        if not args.text_input_json:
+            print("\n[ERROR] --all mode requires --text-input-json")
+            print("\nExample:")
+            print("  python test_multilingual_benchmark.py --all --text-input-json example_texts.json")
+            print("\nSee example_texts.json for format")
             sys.exit(1)
+
+        # Use languages from JSON file
+        languages = list(text_source.keys())
+        print(f"[START] Generating TTS for {len(languages)} languages from JSON file...")
+    else:
+        # Single language mode
+        if args.language in SUPPORTED_LANGUAGES:
+            languages = [args.language]
+            lang_name = SUPPORTED_LANGUAGES[args.language]
+            print(f"[START] Generating TTS for {lang_name} ({args.language})...")
         else:
             print(f"[ERROR] Language '{args.language}' is not supported.")
             print(f"\nSupported languages: {', '.join(sorted(SUPPORTED_LANGUAGES.keys()))}")
@@ -618,16 +706,25 @@ def main():
     results = []
     total_start = time.time()
 
+    # For single language mode without JSON, get keyboard input
+    keyboard_input = None
+    if len(languages) == 1 and not args.text_input_json:
+        lang_code = languages[0]
+        lang_name = SUPPORTED_LANGUAGES[lang_code]
+        keyboard_input = get_text_input(lang_code, lang_name)
+
     for language in languages:
         try:
-            result = benchmark_language(
+            result = generate_language(
                 language=language,
                 pipeline=pipeline,
                 voice_path=voice_path,
                 output_dir=output_dir,
                 emotion=args.emotion,
                 use_openai_prosody=args.use_openai_prosody,
-                analyzer=analyzer
+                analyzer=analyzer,
+                text_source=text_source,
+                custom_text=keyboard_input
             )
             results.append(result)
 
@@ -640,9 +737,16 @@ def main():
             print(f"\n[ERROR] Generation failed for {language}: {e}")
             import traceback
             traceback.print_exc()
+
+            # Get language name
+            if text_source and language in text_source:
+                lang_name = text_source[language]['name']
+            else:
+                lang_name = SUPPORTED_LANGUAGES.get(language, language)
+
             results.append({
                 'language': language,
-                'language_name': MULTILINGUAL_TEXTS[language]['name'],
+                'language_name': lang_name,
                 'success': False,
                 'error': str(e)
             })

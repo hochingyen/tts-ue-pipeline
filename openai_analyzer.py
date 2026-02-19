@@ -239,6 +239,9 @@ If you return identical text without (..) pauses, the TTS will fail."""
             # Clean up spacing artifacts
             result["spoken_text"] = self._cleanup_text_spacing(result["spoken_text"])
 
+            # Count prosody pauses added
+            pause_count = result["spoken_text"].count("..")
+
             # Validate that prosody was actually added
             if result["spoken_text"].strip() == text.strip():
                 print("\n" + "="*80)
@@ -251,6 +254,25 @@ If you return identical text without (..) pauses, the TTS will fail."""
                 print("  1. Use gpt-5.2 instead: --openai-model gpt-5.2")
                 print("  2. Or disable OpenAI and use raw text (faster, less accurate)")
                 print("="*80 + "\n")
+            else:
+                # Show prosody optimization success
+                print(f"\n[Prosody] Added {pause_count} (..) pauses for natural TTS delivery")
+
+                # Show text comparison for verification
+                print("\n[Text Comparison]")
+                print(f"  Original length: {len(text)} chars")
+                print(f"  Spoken length:   {len(result['spoken_text'])} chars")
+
+                # Show first difference to verify changes
+                if len(text) < 200 and len(result['spoken_text']) < 200:
+                    print(f"\n  Original: {text}")
+                    print(f"  Spoken:   {result['spoken_text']}")
+                else:
+                    # For long text, show just the beginning and end
+                    print(f"\n  Original (first 100 chars): {text[:100]}...")
+                    print(f"  Spoken (first 100 chars):   {result['spoken_text'][:100]}...")
+                    print(f"\n  Original (last 100 chars): ...{text[-100:]}")
+                    print(f"  Spoken (last 100 chars):   ...{result['spoken_text'][-100:]}")
 
             return result
 

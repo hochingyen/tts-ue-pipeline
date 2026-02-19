@@ -1,0 +1,34 @@
+{
+  "en": {
+    "name": "English",
+    "text": "Hello! This is a test of the multilingual text-to-speech system. How are you doing today?"
+  },
+  "es": {
+    "name": "Spanish",
+    "text": "¡Hola! Esta es una prueba del sistema de síntesis de voz multilingüe. ¿Cómo estás hoy?"
+  },
+  "zh": {
+    "name": "Chinese",
+    "text": "你好！这是多语言文本转语音系统的测试。你今天怎么样？"
+  },
+  "ja": {
+    "name": "Japanese",
+    "text": "こんにちは！これは多言語音声合成システムのテストです。今日はどうですか？"
+  },
+  "ar": {
+    "name": "Arabic",
+    "text": "مرحبا! هذا اختبار لنظام تحويل النص إلى كلام متعدد اللغات. كيف حالك اليوم؟"
+  },
+  "fr": {
+    "name": "French",
+    "text": "Bonjour! Ceci est un test du système de synthèse vocale multilingue. Comment allez-vous aujourd'hui?"
+  },
+  "de": {
+    "name": "German",
+    "text": "Hallo! Dies ist ein Test des mehrsprachigen Text-zu-Sprache-Systems. Wie geht es Ihnen heute?"
+  },
+  "ko": {
+    "name": "Korean",
+    "text": "안녕하세요! 이것은 다국어 텍스트 음성 변환 시스템의 테스트입니다. 오늘 어떻게 지내세요?"
+  }
+}
