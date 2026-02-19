@@ -334,9 +334,21 @@ class ChatterBoxUEPipeline:
 
                 audio_chunks.append(audio_np)
 
-            # Concatenate all chunks along the samples axis (axis=1)
+            # Concatenate all chunks with silence padding between sentences
             if len(audio_chunks) > 1:
-                audio_np = np.concatenate(audio_chunks, axis=1)
+                # Add 200ms silence between sentences for natural pause
+                silence_samples = int(0.2 * sample_rate)  # 200ms at 24kHz = 4800 samples
+                silence = np.zeros((audio_chunks[0].shape[0], silence_samples))
+
+                # Interleave audio chunks with silence
+                chunks_with_pauses = []
+                for i, chunk in enumerate(audio_chunks):
+                    chunks_with_pauses.append(chunk)
+                    if i < len(audio_chunks) - 1:  # Don't add silence after last chunk
+                        chunks_with_pauses.append(silence)
+
+                audio_np = np.concatenate(chunks_with_pauses, axis=1)
+                print(f"[TTS] Added {len(audio_chunks)-1} inter-sentence pauses (200ms each)")
             else:
                 audio_np = audio_chunks[0]
 

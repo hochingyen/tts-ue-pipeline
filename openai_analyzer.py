@@ -179,10 +179,15 @@ URLs:
 
 PROSODY — add punctuation for natural ChatterBox TTS delivery:
 
-CRITICAL: You MUST add (..) pauses within sentences. This is required for all languages.
+CRITICAL REQUIREMENT - spoken_text MUST BE DIFFERENT from input:
+- You MUST add (..) pauses within EVERY long sentence (15+ words)
+- spoken_text that is identical to input text is INCORRECT and will be rejected
+- The (..) pauses are MANDATORY for TTS breathing and preventing audio glitches
 
+Prosody rules:
 - Add (..) for breathing pauses every 15-20 words within long sentences (REQUIRED)
 - Add (..) after introductory phrases, before conjunctions, between clauses
+- Minimum: at least 2-3 (..) pauses per paragraph
 - Keep existing sentence boundaries (. ! ?) intact — do NOT artificially break sentences
 - Keep all existing ! and ? marks
 - For emphasis on 1-2 key words: use CAPITALIZATION if appropriate for {lang_name}
@@ -190,11 +195,17 @@ CRITICAL: You MUST add (..) pauses within sentences. This is required for all la
 - Preserve ALL content — do NOT remove or omit any words or sentences
 - Do NOT add rhetorical questions unless in original text
 
-Example (showing required (..) pauses within a sentence):
-- Input:  "الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً"
-- Output: "الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ.. فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً." """
+Example (MANDATORY format - note the (..) pauses added):
+- Input:  "الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً عَنْ صَيْدِ السَّمَكِ"
+- Output: "الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ.. فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً.. عَنْ صَيْدِ السَّمَكِ." """
 
-        user_prompt = f"Text:\n<<<\n{text}\n>>>"
+        user_prompt = f"""Text to analyze and optimize:
+
+<<<
+{text}
+>>>
+
+REMINDER: You MUST add (..) pauses to spoken_text. Do NOT return identical text."""
 
         try:
             response = self.client.chat.completions.create(
@@ -203,7 +214,7 @@ Example (showing required (..) pauses within a sentence):
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.3,
+                temperature=0.7,  # Higher temp to encourage prosody changes
                 response_format={"type": "json_object"}
             )
 
