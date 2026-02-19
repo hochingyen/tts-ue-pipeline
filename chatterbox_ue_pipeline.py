@@ -77,6 +77,8 @@ class ChatterBoxUEPipeline:
             openai_api_key: OpenAI API key. Uses OPENAI_API_KEY env var if None.
             enable_openai: Enable OpenAI analysis (default: True)
             openai_model: OpenAI model to use (default: gpt-4o)
+                         GPT-5: gpt-5.2, gpt-5-mini, gpt-5-nano
+                         GPT-4: gpt-4o, gpt-4o-mini
         """
         # Device detection with MPS support
         if device is None:

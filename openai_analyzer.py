@@ -83,7 +83,10 @@ class OpenAIVoiceAnalyzer:
         Args:
             api_key: OpenAI API key (if None, reads from OPENAI_API_KEY env var)
             model: OpenAI model to use (default: gpt-4o)
-                   Options: gpt-4o, gpt-4o-mini, o1-preview, o1-mini
+                   Options:
+                   - GPT-5: gpt-5.2, gpt-5-mini, gpt-5-nano
+                   - GPT-4: gpt-4o, gpt-4o-mini
+                   - O1: o1-preview, o1-mini
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
