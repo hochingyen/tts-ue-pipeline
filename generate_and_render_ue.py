@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 """
-Generate TTS Audio and Prepare for Unreal Engine Rendering
+Complete TTS to MP4 Pipeline - Generate Audio and Render in Unreal Engine
 
-This script:
-1. Generates TTS audio using test_multilingual_benchmark.py
-2. Copies the audio to UE input folder
-3. Launches UE remote rendering (if on Windows or network share available)
+This script runs the complete workflow:
+1. Generate TTS audio (keyboard input or JSON file)
+2. Write audio path to output/current_audio.txt
+3. Copy audio to UE input folder
+4. Launch Unreal Engine for rendering
+5. Wait for UE to close
+6. Copy rendered MP4 to output folder
 
 Usage:
-    # Generate English audio and copy to UE
-    python generate_and_render_ue.py --language en --emotion serious
+    # Single language with keyboard input (interactive)
+    python generate_and_render_ue.py --language ar --use-openai-prosody
 
-    # Generate all languages
-    python generate_and_render_ue.py --all --emotion happy
+    # Single language with JSON file
+    python generate_and_render_ue.py --language en --text-input-json my_texts.json --use-openai-prosody
 
-    # Just copy existing audio (skip generation)
+    # Multiple languages from JSON file
+    python generate_and_render_ue.py --all --text-input-json example_texts.json --use-openai-prosody
+
+    # Just copy existing audio and render (skip TTS generation)
     python generate_and_render_ue.py --copy-only --audio output/cpu_gpu_en_serious.wav
 """
 
@@ -40,28 +46,38 @@ DEFAULT_TTS_OUTPUT = "output"
 RENDER_OUTPUT_FOLDER = r"C:\Users\marketing\Documents\Unreal Projects\male_runtime\Saved\MovieRenders"
 
 
-def generate_tts(language=None, emotion="auto", use_openai_prosody=True):
+def generate_tts(language=None, emotion="auto", use_openai_prosody=True, text_input_json=None, gpu_device=1):
     """
     Generate TTS audio using test_multilingual_benchmark.py
 
     Args:
-        language: Language code (en, zh, ja, ar, es) or None for all
+        language: Language code or None for all
         emotion: Emotion for TTS
         use_openai_prosody: Use OpenAI prosody optimization
+        text_input_json: Path to JSON file with texts (required for --all mode)
+        gpu_device: CUDA GPU device ID (default: 1)
 
     Returns:
-        Path to generated audio file
+        Path to generated audio file (for single language) or list of paths (for --all)
     """
     print("\n" + "="*80)
-    print("[STEP 1/3] Generating TTS Audio")
+    print("[STEP 1/4] Generating TTS Audio")
     print("="*80)
 
     cmd = [sys.executable, "test_multilingual_benchmark.py"]
 
     if language:
         cmd.extend(["--language", language])
+        if text_input_json:
+            cmd.extend(["--text-input-json", text_input_json])
+        # else: keyboard input mode (interactive)
     else:
+        # --all mode requires JSON file
+        if not text_input_json:
+            print("[ERROR] --all mode requires --text-input-json")
+            return None
         cmd.append("--all")
+        cmd.extend(["--text-input-json", text_input_json])
 
     cmd.extend(["--emotion", emotion])
 
@@ -73,26 +89,50 @@ def generate_tts(language=None, emotion="auto", use_openai_prosody=True):
     try:
         env = os.environ.copy()
         env['PYTHONIOENCODING'] = 'utf-8'
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True, encoding='utf-8', env=env)
-        print(result.stdout)
-
-        # Find the generated WAV using glob (emotion may be auto-detected, name differs)
-        lang = language if language else "en"
-        pattern = os.path.join(DEFAULT_TTS_OUTPUT, f"cpu_gpu_{lang}_*.wav")
-        wav_files = glob.glob(pattern)
-        if wav_files:
-            # Pick the newest one
-            wav_files.sort(key=os.path.getmtime, reverse=True)
-            audio_file = wav_files[0]
-            print(f"\n[SUCCESS] Generated: {audio_file}")
-            return audio_file
+        # Set CUDA device
+        env['CUDA_VISIBLE_DEVICES'] = str(gpu_device)
+        print(f"[GPU] Using CUDA device: {gpu_device}")
+        # For keyboard input mode, we need interactive stdin
+        if language and not text_input_json:
+            # Interactive mode - don't capture output, let user interact
+            result = subprocess.run(cmd, check=True, env=env)
         else:
-            print(f"[ERROR] No WAV found matching: {pattern}")
-            return None
+            # JSON mode - can capture output
+            result = subprocess.run(cmd, check=True, capture_output=True, text=True, encoding='utf-8', env=env)
+            print(result.stdout)
+
+        # Find the generated WAV files
+        if language:
+            # Single language - find newest WAV for this language
+            pattern = os.path.join(DEFAULT_TTS_OUTPUT, f"cpu_gpu_{language}_*.wav")
+            wav_files = glob.glob(pattern)
+            if wav_files:
+                wav_files.sort(key=os.path.getmtime, reverse=True)
+                audio_file = wav_files[0]
+                print(f"\n[SUCCESS] Generated: {audio_file}")
+                return audio_file
+            else:
+                print(f"[ERROR] No WAV found matching: {pattern}")
+                return None
+        else:
+            # Multiple languages - find all generated WAVs
+            pattern = os.path.join(DEFAULT_TTS_OUTPUT, "cpu_gpu_*_*.wav")
+            wav_files = glob.glob(pattern)
+            if wav_files:
+                # Return newest files (likely just generated)
+                wav_files.sort(key=os.path.getmtime, reverse=True)
+                print(f"\n[SUCCESS] Generated {len(wav_files)} audio files")
+                for f in wav_files:
+                    print(f"  - {f}")
+                return wav_files
+            else:
+                print(f"[ERROR] No WAV files found in: {DEFAULT_TTS_OUTPUT}")
+                return None
 
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] TTS generation failed: {e}")
-        print(e.stderr)
+        if hasattr(e, 'stderr') and e.stderr:
+            print(e.stderr)
         return None
 
 
@@ -108,7 +148,7 @@ def copy_to_ue_input(audio_file, ue_input_folder):
         True if successful, False otherwise
     """
     print("\n" + "="*80)
-    print("[STEP 2/3] Copying Audio to UE Input Folder")
+    print("[STEP 2/4] Copying Audio to UE Input Folder")
     print("="*80)
 
     if not os.path.exists(audio_file):
@@ -228,7 +268,7 @@ def launch_ue_rendering(ue_launch_script):
         True if successful, False otherwise
     """
     print("\n" + "="*80)
-    print("[STEP 3/3] Launching UE Remote Rendering")
+    print("[STEP 3/4] Launching UE Remote Rendering")
     print("="*80)
 
     if os.path.exists(ue_launch_script):
@@ -249,20 +289,25 @@ def launch_ue_rendering(ue_launch_script):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate TTS Audio and Prepare for UE Rendering"
+        description="Complete TTS to MP4 Pipeline - Generate Audio and Render in UE"
     )
 
     parser.add_argument(
         '--language',
         type=str,
-        choices=['en', 'zh', 'ja', 'ar', 'es'],
-        help='Generate specific language'
+        help='Generate specific language (e.g., en, ar, zh, ja, es, fr, etc.)'
     )
 
     parser.add_argument(
         '--all',
         action='store_true',
-        help='Generate all languages'
+        help='Generate all languages from JSON file (requires --text-input-json)'
+    )
+
+    parser.add_argument(
+        '--text-input-json',
+        type=str,
+        help='Path to JSON file with texts (required for --all, optional for single language)'
     )
 
     parser.add_argument(
@@ -273,15 +318,15 @@ def main():
     )
 
     parser.add_argument(
-        '--no-openai-prosody',
+        '--use-openai-prosody',
         action='store_true',
-        help='Skip OpenAI prosody optimization'
+        help='Use OpenAI prosody optimization (recommended for quality)'
     )
 
     parser.add_argument(
         '--copy-only',
         action='store_true',
-        help='Only copy existing audio (skip TTS generation)'
+        help='Only copy existing audio and render (skip TTS generation)'
     )
 
     parser.add_argument(
@@ -307,7 +352,14 @@ def main():
     parser.add_argument(
         '--no-launch',
         action='store_true',
-        help='Skip UE rendering launch'
+        help='Skip UE rendering launch (only generate TTS)'
+    )
+
+    parser.add_argument(
+        '--gpu',
+        type=int,
+        default=1,
+        help='CUDA GPU device ID (default: 1)'
     )
 
     args = parser.parse_args()
@@ -319,28 +371,53 @@ def main():
     if args.copy_only and not args.audio:
         parser.error("--audio must be specified with --copy-only")
 
+    if args.all and not args.text_input_json:
+        parser.error("--all mode requires --text-input-json")
+
     print("\n" + "="*80)
-    print("GENERATE TTS AND PREPARE FOR UE RENDERING")
+    print("COMPLETE TTS TO MP4 PIPELINE")
     print("="*80)
 
     # Step 1: Generate TTS (or use existing)
     if args.copy_only:
-        audio_file = args.audio
-        print(f"\n[COPY-ONLY MODE] Using existing audio: {audio_file}")
+        audio_files = [args.audio]
+        print(f"\n[COPY-ONLY MODE] Using existing audio: {args.audio}")
     else:
-        audio_file = generate_tts(
+        result = generate_tts(
             language=args.language,
             emotion=args.emotion,
-            use_openai_prosody=not args.no_openai_prosody
+            use_openai_prosody=args.use_openai_prosody,
+            text_input_json=args.text_input_json,
+            gpu_device=args.gpu
         )
-        if not audio_file:
+        if not result:
             print("\n[FAILED] TTS generation failed")
             sys.exit(1)
 
-    run_pipeline_for_audio(audio_file, args.ue_input, args.ue_launch_script, args.no_launch)
+        # Handle single file or multiple files
+        if isinstance(result, list):
+            audio_files = result
+        else:
+            audio_files = [result]
+
+    # Step 2-4: Process each audio file through UE pipeline
+    print(f"\n[INFO] Processing {len(audio_files)} audio file(s)")
+
+    for i, audio_file in enumerate(audio_files, 1):
+        print(f"\n{'='*80}")
+        print(f"[FILE {i}/{len(audio_files)}] Processing: {os.path.basename(audio_file)}")
+        print(f"{'='*80}")
+
+        run_pipeline_for_audio(audio_file, args.ue_input, args.ue_launch_script, args.no_launch)
+
+        # Pause between files if processing multiple
+        if i < len(audio_files) and not args.no_launch:
+            import time
+            print("\n[PAUSE] Waiting 5 seconds before next file...")
+            time.sleep(5)
 
     print("\n" + "="*80)
-    print("[COMPLETE] Workflow finished")
+    print("[COMPLETE] All files processed successfully!")
     print("="*80)
 
 
