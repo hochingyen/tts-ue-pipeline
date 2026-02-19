@@ -1,26 +1,37 @@
 #!/usr/bin/env python3
 """
-Complete TTS to MP4 Pipeline - Generate Audio and Render in Unreal Engine
+Complete TTS → UE → MP4 Pipeline
 
-This script runs the complete workflow:
-1. Generate TTS audio (keyboard input or JSON file)
-2. Write audio path to output/current_audio.txt
-3. Copy audio to UE input folder
-4. Launch Unreal Engine for rendering
-5. Wait for UE to close
-6. Copy rendered MP4 to output folder
+Full workflow from text to final rendered video:
+1. Select language from 23 supported languages (interactive menu)
+2. Input text (keyboard or JSON file)
+3. Generate TTS audio with ChatterBox (GPU 1 by default)
+4. Write audio path to output/current_audio.txt
+5. Copy audio to UE input folder
+6. Launch Unreal Engine for rendering
+7. Wait for UE to close
+8. Copy rendered MP4 to output folder
 
 Usage:
-    # Single language with keyboard input (interactive)
+    # Interactive mode (default) - select language from menu, type your text
+    python generate_and_render_ue.py --use-openai-prosody
+
+    # Specify language directly (skip menu)
     python generate_and_render_ue.py --language ar --use-openai-prosody
 
-    # Single language with JSON file
+    # Use JSON file for text input
     python generate_and_render_ue.py --language en --text-input-json my_texts.json --use-openai-prosody
 
     # Multiple languages from JSON file
     python generate_and_render_ue.py --all --text-input-json example_texts.json --use-openai-prosody
 
-    # Just copy existing audio and render (skip TTS generation)
+    # Use different GPU
+    python generate_and_render_ue.py --language zh --use-openai-prosody --gpu 0
+
+    # Test TTS only (skip UE rendering)
+    python generate_and_render_ue.py --language en --use-openai-prosody --no-launch
+
+    # Render existing audio file
     python generate_and_render_ue.py --copy-only --audio output/cpu_gpu_en_serious.wav
 """
 
@@ -31,6 +42,10 @@ import shutil
 import subprocess
 import glob
 from pathlib import Path
+
+# Import language config for interactive menu
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'config'))
+from language_config import SUPPORTED_LANGUAGES
 
 
 # UE input folder (relative to this project)
@@ -44,6 +59,61 @@ DEFAULT_TTS_OUTPUT = "output"
 
 # UE render output folder (must match ue_render_script.py)
 RENDER_OUTPUT_FOLDER = r"C:\Users\marketing\Documents\Unreal Projects\male_runtime\Saved\MovieRenders"
+
+
+def show_language_menu():
+    """
+    Display interactive language selection menu for all 23 supported languages.
+
+    Returns:
+        Selected language code
+    """
+    print("\n" + "=" * 80)
+    print("COMPLETE TTS → UE → MP4 PIPELINE - LANGUAGE SELECTION")
+    print("=" * 80)
+
+    # Get all 23 supported languages in alphabetical order
+    languages = sorted(SUPPORTED_LANGUAGES.items(), key=lambda x: x[1])
+
+    # Display languages with numbers
+    print("\nSupported Languages (23 total):\n")
+
+    # Display in 2 columns for better readability
+    col_width = 40
+    for i in range(0, len(languages), 2):
+        lang1_code, lang1_name = languages[i]
+        line = f"  {i+1:2}. [{lang1_code}] {lang1_name}"
+
+        if i + 1 < len(languages):
+            lang2_code, lang2_name = languages[i+1]
+            line += f"{' ' * (col_width - len(line))} {i+2:2}. [{lang2_code}] {lang2_name}"
+
+        print(line)
+
+    print("\n" + "=" * 80)
+
+    # Get user choice
+    while True:
+        try:
+            choice = input("\nEnter your choice (number or language code): ").strip().lower()
+
+            # Check if it's a valid language code
+            if choice in SUPPORTED_LANGUAGES:
+                return choice
+
+            # Check if it's a valid number
+            try:
+                num = int(choice)
+                if 1 <= num <= len(languages):
+                    return languages[num - 1][0]
+            except ValueError:
+                pass
+
+            print(f"Invalid choice: '{choice}'. Please enter a number (1-{len(languages)}) or language code.")
+
+        except KeyboardInterrupt:
+            print("\n\nSelection cancelled.")
+            sys.exit(0)
 
 
 def generate_tts(language=None, emotion="auto", use_openai_prosody=True, text_input_json=None, gpu_device=1):
@@ -365,17 +435,41 @@ def main():
     args = parser.parse_args()
 
     # Validate arguments
-    if not args.copy_only and not args.language and not args.all:
-        parser.error("Either --language, --all, or --copy-only must be specified")
-
     if args.copy_only and not args.audio:
         parser.error("--audio must be specified with --copy-only")
 
     if args.all and not args.text_input_json:
         parser.error("--all mode requires --text-input-json")
 
+    # Interactive language selection if not specified
+    if not args.copy_only and not args.language and not args.all:
+        args.language = show_language_menu()
+        print(f"\n[SELECTED] {SUPPORTED_LANGUAGES[args.language]} ({args.language})")
+
     print("\n" + "="*80)
-    print("COMPLETE TTS TO MP4 PIPELINE")
+    print("COMPLETE TTS → UE → MP4 PIPELINE")
+    print("="*80)
+
+    # Show pipeline steps
+    if not args.copy_only:
+        print("\nPipeline Steps:")
+        print("  1. Generate TTS audio with ChatterBox")
+        if args.use_openai_prosody:
+            print("     - OpenAI prosody optimization: ENABLED")
+        print(f"     - CUDA GPU: {args.gpu}")
+        print(f"     - Language: {SUPPORTED_LANGUAGES.get(args.language, args.language) if args.language else 'Multiple'}")
+        if args.text_input_json:
+            print(f"     - Input: JSON file ({args.text_input_json})")
+        else:
+            print(f"     - Input: Keyboard (you will type your text)")
+
+    if not args.no_launch:
+        print("  2. Launch Unreal Engine")
+        print("  3. Wait for rendering to complete")
+        print("  4. Copy MP4 to output folder")
+    else:
+        print("\n  [Note: UE rendering skipped (--no-launch)]")
+
     print("="*80)
 
     # Step 1: Generate TTS (or use existing)
