@@ -44,9 +44,13 @@ MULTILINGUAL_TEXTS = {
         'name': 'English',
         'text': "Dr. O'Brien read the lead article at 3:45 PM about bass fishing in 1999. The tear in her eye appeared as she tried to tear the paper. The WWW address costs $99.99 plus 15% tax. Will the invalid's invalid license be close enough to close the door? The dove dove into the bushes. LOL!"
     },
+    'es': {
+        'name': 'Spanish',
+        'text': 'El Doctor O\'Brien leyó el artículo principal a las tres y cuarenta y cinco de la tarde sobre la pesca de lubina en mil novecientos noventa y nueve. La lágrima en su ojo apareció mientras intentaba rasgar el papel. La dirección doble uve doble uve doble uve cuesta noventa y nueve con noventa y nueve dólares más quince por ciento de impuesto. ¿Estará la licencia inválida del inválido lo suficientemente cerca para cerrar la puerta? La paloma se lanzó a los arbustos... ¡JAJA!'
+    },
     'zh': {
         'name': 'Chinese',
-        'text': '奥布莱恩博士在下午三点四十五分阅读了一九九九年关于鲈鱼钓鱼的头条文章。她试图撕开报纸时，眼中流露出泪水。万维网地址的费用是九十九点九九美元，加上百分之十五的税。残疾人的无效驾照是否足够接近以关闭门？鸽子飞入了灌木丛中。哈哈！'
+        'text': '奥布莱恩博士在下午三点四十五分阅读了一九九九年关于鲈鱼钓鱼的头条文章。她试图撕开报纸时，眼中流露出泪水。万维网地址的费用是九十九点九九美元，加上百分之十五的税。残疾人的无效驾照是否足够接近以关闭门鸽子飞入了灌木丛中。哈哈！'
     },
     'ja': {
         'name': 'Japanese',
@@ -55,10 +59,6 @@ MULTILINGUAL_TEXTS = {
     'ar': {
         'name': 'Arabic',
         'text': 'الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً عَنْ صَيْدِ السَّمَكِ فِي عَامِ أَلْفٍ وَتِسْعِمِائَةٍ وَتِسْعٍ وَتِسْعِينَ. ظَهَرَتِ الدُّمُوعُ فِي عَيْنَيْهَا عِنْدَمَا حَاوَلَتْ تَمْزِيقَ الْوَرَقَةِ. عُنْوَانُ الشَّبَكَةِ الْعَالَمِيَّةِ يُكَلِّفُ تِسْعَةً وَتِسْعِينَ دُولَارًا وَتِسْعَةً وَتِسْعِينَ سِنْتًا، بِالْإِضَافَةِ إِلَى خَمْسَةَ عَشَرَ بِالْمِئَةِ ضَرِيبَةً. هَلْ سَتَكُونُ رُخْصَةُ الْمُعَاقِينَ غَيْرُ الصَّالِحَةِ قَرِيبَةً بِمَا يَكْفِي لِإِغْلَاقِ الْبَابِ؟ الْحَمَامَةُ انْقَضَّتْ إِلَى الشُّجَيْرَاتِ. هَاهَا!'
-    },
-    'es': {
-        'name': 'Spanish',
-        'text': 'El Doctor O\'Brien leyó el artículo principal a las tres y cuarenta y cinco de la tarde sobre la pesca de lubina en mil novecientos noventa y nueve. La lágrima en su ojo apareció mientras intentaba rasgar el papel. La dirección doble uve doble uve doble uve cuesta noventa y nueve con noventa y nueve dólares más quince por ciento de impuesto. ¿Estará la licencia inválida del inválido lo suficientemente cerca para cerrar la puerta? La paloma se lanzó a los arbustos... ¡JAJA!'
     }
 }
 
