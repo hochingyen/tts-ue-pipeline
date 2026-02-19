@@ -76,12 +76,14 @@ class OpenAIVoiceAnalyzer:
         "el": {"name": "Greek",                "punctuation": ". ! ?"},
     }
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o"):
         """
         Initialize OpenAI analyzer.
 
         Args:
             api_key: OpenAI API key (if None, reads from OPENAI_API_KEY env var)
+            model: OpenAI model to use (default: gpt-4o)
+                   Options: gpt-4o, gpt-4o-mini, o1-preview, o1-mini
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
@@ -91,7 +93,8 @@ class OpenAIVoiceAnalyzer:
             )
 
         self.client = OpenAI(api_key=self.api_key)
-        self.model = "gpt-4o"
+        self.model = model
+        print(f"[OpenAI] Using model: {self.model}")
 
     def analyze_and_optimize(self, text: str, language: str = "en") -> Dict[str, str]:
         """

@@ -66,7 +66,8 @@ class ChatterBoxUEPipeline:
         self,
         device: Optional[str] = None,
         openai_api_key: Optional[str] = None,
-        enable_openai: bool = True
+        enable_openai: bool = True,
+        openai_model: str = "gpt-4o"
     ):
         """
         Initialize ChatterBox-UE pipeline.
@@ -75,6 +76,7 @@ class ChatterBoxUEPipeline:
             device: Computing device ('cuda', 'mps', 'cpu'). Auto-detects if None.
             openai_api_key: OpenAI API key. Uses OPENAI_API_KEY env var if None.
             enable_openai: Enable OpenAI analysis (default: True)
+            openai_model: OpenAI model to use (default: gpt-4o)
         """
         # Device detection with MPS support
         if device is None:
@@ -141,7 +143,7 @@ class ChatterBoxUEPipeline:
         self.enable_openai = enable_openai
         if self.enable_openai:
             try:
-                self.openai_analyzer = OpenAIVoiceAnalyzer(api_key=openai_api_key)
+                self.openai_analyzer = OpenAIVoiceAnalyzer(api_key=openai_api_key, model=openai_model)
                 print("[OpenAI] Analyzer initialized")
             except Exception as e:
                 print(f"[Warning] OpenAI initialization failed: {e}")

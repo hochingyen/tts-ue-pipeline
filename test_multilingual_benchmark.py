@@ -517,6 +517,13 @@ def main():
         help='Emotion for TTS generation (default: auto - detected by OpenAI)'
     )
 
+    parser.add_argument(
+        '--openai-model',
+        type=str,
+        default='gpt-4o',
+        help='OpenAI model to use (default: gpt-4o). Options: gpt-4o, gpt-4o-mini, o1-preview, o1-mini'
+    )
+
     args = parser.parse_args()
 
     # Interactive mode: if no language specified and --all not used
@@ -575,7 +582,7 @@ def main():
     if args.use_openai_prosody:
         print("\n[Setup] Initializing OpenAI analyzer...")
         try:
-            analyzer = OpenAIVoiceAnalyzer()
+            analyzer = OpenAIVoiceAnalyzer(model=args.openai_model)
             print("[READY] OpenAI analyzer ready")
         except Exception as e:
             print(f"[ERROR] Failed to initialize OpenAI analyzer: {e}")
