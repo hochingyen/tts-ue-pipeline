@@ -37,6 +37,10 @@ from openai_analyzer import OpenAIVoiceAnalyzer
 import torch
 import torchaudio as ta
 
+# Import language config for all 23 languages
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'config'))
+from language_config import SUPPORTED_LANGUAGES
+
 
 # Multilingual test texts (Dr. O'Brien passage translated)
 MULTILINGUAL_TEXTS = {
@@ -61,6 +65,66 @@ MULTILINGUAL_TEXTS = {
         'text': 'الدُّكْتُورُ أُوبْرَايِنُ قَرَأَ الْمَقَالَ الرَّئِيسِيَّ فِي السَّاعَةِ الثَّالِثَةِ وَخَمْسٍ وَأَرْبَعِينَ مَسَاءً عَنْ صَيْدِ السَّمَكِ فِي عَامِ أَلْفٍ وَتِسْعِمِائَةٍ وَتِسْعٍ وَتِسْعِينَ. ظَهَرَتِ الدُّمُوعُ فِي عَيْنَيْهَا عِنْدَمَا حَاوَلَتْ تَمْزِيقَ الْوَرَقَةِ. عُنْوَانُ الشَّبَكَةِ الْعَالَمِيَّةِ يُكَلِّفُ تِسْعَةً وَتِسْعِينَ دُولَارًا وَتِسْعَةً وَتِسْعِينَ سِنْتًا، بِالْإِضَافَةِ إِلَى خَمْسَةَ عَشَرَ بِالْمِئَةِ ضَرِيبَةً. هَلْ سَتَكُونُ رُخْصَةُ الْمُعَاقِينَ غَيْرُ الصَّالِحَةِ قَرِيبَةً بِمَا يَكْفِي لِإِغْلَاقِ الْبَابِ؟ الْحَمَامَةُ انْقَضَّتْ إِلَى الشُّجَيْرَاتِ. هَاهَا!'
     }
 }
+
+
+def show_language_menu() -> str:
+    """
+    Display interactive language selection menu for all 23 supported languages.
+
+    Returns:
+        Selected language code or 'all' for all languages
+    """
+    print("\n" + "=" * 80)
+    print("MULTILINGUAL TTS BENCHMARK - LANGUAGE SELECTION")
+    print("=" * 80)
+
+    # Get all 23 supported languages in alphabetical order
+    languages = sorted(SUPPORTED_LANGUAGES.items(), key=lambda x: x[1])
+
+    # Display languages with numbers
+    print("\nSupported Languages (23 total):\n")
+
+    # Display in 2 columns for better readability
+    col_width = 40
+    for i in range(0, len(languages), 2):
+        lang1_code, lang1_name = languages[i]
+        line = f"  {i+1:2}. [{lang1_code}] {lang1_name}"
+
+        if i + 1 < len(languages):
+            lang2_code, lang2_name = languages[i+1]
+            line += f"{' ' * (col_width - len(line))} {i+2:2}. [{lang2_code}] {lang2_name}"
+
+        print(line)
+
+    print(f"\n  {len(languages)+1:2}. [all] Test ALL {len(languages)} languages")
+    print("\n" + "=" * 80)
+
+    # Get user choice
+    while True:
+        try:
+            choice = input("\nEnter your choice (number or language code): ").strip().lower()
+
+            # Check if it's "all"
+            if choice == "all" or choice == str(len(languages) + 1):
+                return "all"
+
+            # Check if it's a valid language code
+            if choice in SUPPORTED_LANGUAGES:
+                return choice
+
+            # Check if it's a valid number
+            try:
+                num = int(choice)
+                if 1 <= num <= len(languages):
+                    return languages[num - 1][0]
+            except ValueError:
+                pass
+
+            print(f"Invalid choice: '{choice}'. Please enter a number (1-{len(languages)+1}) or language code.")
+
+        except KeyboardInterrupt:
+            print("\n\nSelection cancelled.")
+            sys.exit(0)
 
 
 def add_silence_to_audio(
@@ -403,14 +467,13 @@ def main():
     parser.add_argument(
         '--language',
         type=str,
-        choices=['en', 'zh', 'ja', 'ar', 'es'],
-        help='Test a specific language'
+        help='Test a specific language (e.g., en, zh, ja, ar, es, fr, de, etc.)'
     )
 
     parser.add_argument(
         '--all',
         action='store_true',
-        help='Test all 5 languages'
+        help='Test all benchmark languages (en, zh, ja, ar, es)'
     )
 
     parser.add_argument(
@@ -456,20 +519,38 @@ def main():
 
     args = parser.parse_args()
 
-    # Validate arguments
+    # Interactive mode: if no language specified and --all not used
     if not args.language and not args.all:
-        parser.error("Either --language or --all must be specified")
+        choice = show_language_menu()
 
+        if choice == "all":
+            args.all = True
+        else:
+            args.language = choice
+
+    # Validate arguments
     if args.language and args.all:
         parser.error("Cannot specify both --language and --all")
 
     # Determine which languages to test
     if args.all:
         languages = ['en', 'zh', 'ja', 'ar', 'es']
-        print("[START] Generating TTS for ALL 5 languages with voice cloning...")
+        print("[START] Generating TTS for ALL benchmark languages (5 total) with voice cloning...")
     else:
-        languages = [args.language]
-        print(f"[START] Generating TTS for {MULTILINGUAL_TEXTS[args.language]['name']} only...")
+        # Check if language has test text in MULTILINGUAL_TEXTS
+        if args.language in MULTILINGUAL_TEXTS:
+            languages = [args.language]
+            print(f"[START] Generating TTS for {MULTILINGUAL_TEXTS[args.language]['name']} with benchmark text...")
+        elif args.language in SUPPORTED_LANGUAGES:
+            # Language is supported but doesn't have benchmark text
+            print(f"[ERROR] Language '{args.language}' ({SUPPORTED_LANGUAGES[args.language]}) is supported")
+            print(f"        but doesn't have benchmark test text in MULTILINGUAL_TEXTS.")
+            print(f"\nAvailable benchmark languages: {', '.join(MULTILINGUAL_TEXTS.keys())}")
+            sys.exit(1)
+        else:
+            print(f"[ERROR] Language '{args.language}' is not supported.")
+            print(f"\nSupported languages: {', '.join(sorted(SUPPORTED_LANGUAGES.keys()))}")
+            sys.exit(1)
 
     # Check voice file
     if not os.path.exists(args.voice):
