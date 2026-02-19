@@ -336,13 +336,27 @@ class ChatterBoxUEPipeline:
                 elif audio_np.ndim == 3:
                     audio_np = audio_np.squeeze(0)
 
+                # Debug: print shape of each chunk
+                if len(sentences) > 1:
+                    print(f"      Shape: {audio_np.shape}, Samples: {audio_np.shape[1] if audio_np.ndim == 2 else len(audio_np)}")
+
                 audio_chunks.append(audio_np)
 
             # Concatenate all chunks with silence padding between sentences
             if len(audio_chunks) > 1:
+                # Validate all chunks have same number of channels
+                num_channels = audio_chunks[0].shape[0]
+                for i, chunk in enumerate(audio_chunks):
+                    if chunk.shape[0] != num_channels:
+                        print(f"[Warning] Chunk {i} has {chunk.shape[0]} channels, expected {num_channels}")
+                        # Fix: reshape to match expected channels
+                        if chunk.shape[0] == 1 and num_channels > 1:
+                            chunk = np.repeat(chunk, num_channels, axis=0)
+                        audio_chunks[i] = chunk
+
                 # Add 200ms silence between sentences for natural pause
                 silence_samples = int(0.2 * sample_rate)  # 200ms at 24kHz = 4800 samples
-                silence = np.zeros((audio_chunks[0].shape[0], silence_samples))
+                silence = np.zeros((num_channels, silence_samples))
 
                 # Interleave audio chunks with silence
                 chunks_with_pauses = []
@@ -356,7 +370,14 @@ class ChatterBoxUEPipeline:
             else:
                 audio_np = audio_chunks[0]
 
-            print(f"[TTS] Audio generated: {len(audio_np)} samples @ {sample_rate} Hz")
+            # Calculate total samples correctly (handle both 1D and 2D arrays)
+            if audio_np.ndim == 1:
+                total_samples = len(audio_np)
+            else:
+                total_samples = audio_np.shape[1] if audio_np.shape[1] > audio_np.shape[0] else audio_np.shape[0]
+
+            print(f"[TTS] Audio generated: {total_samples} samples @ {sample_rate} Hz")
+            print(f"[TTS] Audio shape: {audio_np.shape}, Duration: {total_samples/sample_rate:.2f}s")
             return audio_np, sample_rate
 
         except Exception as e:
