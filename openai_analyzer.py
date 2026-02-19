@@ -116,11 +116,25 @@ class OpenAIVoiceAnalyzer:
         lang_name = lang_info["name"]
         punctuation = lang_info["punctuation"]
 
-        system_prompt = f"""You are a voice director for a game dialogue system.
+        system_prompt = f"""#Role: You are a voice director for a game dialogue system.
 
-The input text is in {lang_name}.
+#Task: Analyze input text and prepare it for text-to-speech (TTS) delivery.
 
-Your tasks:
+#Topic: Voice asset generation for Unreal Engine.
+
+#Format: Return JSON ONLY in this exact format:
+{{
+  "gender": "male|female",
+  "emotion": "emotion_name",
+  "spoken_text": "..."
+}}
+
+#Context: The input text is in {lang_name}.
+
+#Goal: Generate natural-sounding TTS audio with appropriate gender voice and emotion.
+
+#Requirements/Constraints:
+
 1. Detect the speaker gender: male or female
    - Infer from pronouns, character names, or content context
    - If ambiguous, choose the most contextually appropriate gender
@@ -133,9 +147,8 @@ Your tasks:
    - Apply normalization rules (see below)
    - Apply prosody rules (see below)
 
-──────────────────────────────────────────────
 NORMALIZATION — convert to spoken {lang_name} words:
-──────────────────────────────────────────────
+
 Numbers:
 - Integers: write as words in {lang_name} (e.g. "42", "1,234")
 - Years: use natural spoken form (e.g. "1999" → "nineteen ninety-nine" in English)
@@ -164,24 +177,14 @@ URLs:
 - Short URLs: spell out (www.example.com → W W W dot example dot com)
 - Long URLs: "the web address on screen"
 
-──────────────────────────────────────────────
 PROSODY — add punctuation for natural ChatterBox TTS delivery:
-──────────────────────────────────────────────
 - Use (..) for natural breathing pauses between clauses
 - Break sentences longer than 15–20 words into shorter ones using periods
 - Keep all existing ! and ? marks
 - For emphasis on 1–2 key words: use CAPITALIZATION if appropriate for {lang_name}
 - Use proper {lang_name} punctuation: {punctuation}
 - Preserve ALL content — do NOT remove or omit any words or sentences
-- Do NOT add rhetorical questions unless in original text
-
-──────────────────────────────────────────────
-Return JSON ONLY in this exact format:
-{{
-  "gender": "male|female",
-  "emotion": "emotion_name",
-  "spoken_text": "..."
-}}"""
+- Do NOT add rhetorical questions unless in original text"""
 
         user_prompt = f"Text:\n<<<\n{text}\n>>>"
 
@@ -303,9 +306,18 @@ Return JSON ONLY in this exact format:
 
         language_name = LANGUAGE_NAMES.get(target_language, target_language)
 
-        system_prompt = f"""You are a professional translator specializing in text-to-speech (TTS) preparation.
+        system_prompt = f"""#Role: You are a professional translator specializing in text-to-speech (TTS) preparation.
 
-Your task:
+#Task: Translate English text to {language_name} and prepare it for natural TTS delivery.
+
+#Format: Return ONLY the translated, normalized, and prosody-optimized text. No explanations, no JSON, just the text.
+
+#Context: The input text is in English and needs to be translated to {language_name}.
+
+#Goal: Produce natural-sounding {language_name} text optimized for TTS pronunciation and pacing.
+
+#Requirements/Constraints:
+
 1. Translate English text to {language_name}
 2. Normalize ALL numbers, dates, times, symbols, and abbreviations for natural TTS pronunciation
 3. Add prosody optimization (pauses, emphasis, pacing) for natural speech delivery
@@ -336,9 +348,7 @@ PROSODY OPTIMIZATION for natural speech:
 - Use periods to create definitive breaks
 - Add ellipses (...) for contemplative pauses if appropriate
 - For strong emphasis on 1-2 key words: use appropriate {language_name} emphasis markers or CAPITALIZATION if culturally appropriate
-- Ensure proper sentence pacing and rhythm
-
-Return ONLY the translated, normalized, and prosody-optimized text. No explanations, no JSON, just the text."""
+- Ensure proper sentence pacing and rhythm"""
 
         user_prompt = f"Translate to {language_name} and normalize for TTS:\n\n{text}"
 
