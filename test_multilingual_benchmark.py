@@ -180,14 +180,28 @@ def get_text_input(language: str, lang_name: str) -> str:
     print("\n" + "=" * 80)
     print(f"TEXT INPUT - {lang_name} ({language})")
     print("=" * 80)
-    print("\nEnter your text below (press Ctrl+D on Mac/Linux or Ctrl+Z on Windows when done):")
-    print("TIP: For multi-line text, keep typing. Press Enter for new lines.")
+
+    import platform
+    if platform.system() == "Windows":
+        print("\nEnter your text below:")
+        print("TIP: For multi-line text, keep typing. Press Enter for new lines.")
+        print("IMPORTANT: When done, use one of these methods:")
+        print("  Method 1: Press Enter to start a new line, then press Ctrl+Z, then press Enter")
+        print("  Method 2: Type 'EOF' on a new line by itself (easier!)")
+    else:
+        print("\nEnter your text below:")
+        print("TIP: For multi-line text, keep typing. Press Enter for new lines.")
+        print("When done: Press Ctrl+D or type 'EOF' on a new line by itself")
+
     print("-" * 80)
 
     lines = []
     try:
         while True:
             line = input()
+            # Allow typing "EOF" on a line by itself as an alternative to Ctrl+Z/Ctrl+D
+            if line.strip() == "EOF":
+                break
             lines.append(line)
     except EOFError:
         pass
