@@ -76,13 +76,13 @@ class OpenAIVoiceAnalyzer:
         "el": {"name": "Greek",                "punctuation": ". ! ?"},
     }
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-5-mini"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-5.2"):
         """
         Initialize OpenAI analyzer.
 
         Args:
             api_key: OpenAI API key (if None, reads from OPENAI_API_KEY env var)
-            model: OpenAI model to use (default: gpt-5-mini)
+            model: OpenAI model to use (default: gpt-5.2)
                    Options:
                    - GPT-5: gpt-5.2, gpt-5-mini, gpt-5-nano
                    - GPT-4: gpt-4o, gpt-4o-mini
