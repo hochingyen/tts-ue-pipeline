@@ -62,7 +62,7 @@ current_audio_file_path = None  # Store input audio path for output naming
 
 # Configuration
 PRESET_PATH = "/Game/Cinematics/Pending_MoviePipelinePrimaryConfig.Pending_MoviePipelinePrimaryConfig"
-LEVEL_SEQUENCE_PATH = "/Game/NewLevelSequence"
+LEVEL_SEQUENCE_PATH = "/Game/backup_NewLevelSequence1"  # Updated to use the backup sequence with correct timeline
 MAP_PATH = "/Game/NewMap"
 INPUT_AUDIO_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/output"  # Windows path for UE
 OUTPUT_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/output"  # Output folder for final MP4s
@@ -158,11 +158,18 @@ def copy_output_file(input_audio_path):
 
     try:
         # Find the rendered MP4 file in the render output folder
-        rendered_file = os.path.join(RENDER_OUTPUT_FOLDER, "NewLevelSequence.mp4")
+        # The filename will match the sequence name (backup_NewLevelSequence1.mp4)
+        rendered_file = os.path.join(RENDER_OUTPUT_FOLDER, "backup_NewLevelSequence1.mp4")
 
         if not os.path.exists(rendered_file):
             unreal.log_error(f"Rendered file not found: {rendered_file}")
-            return False
+            # Try fallback name just in case
+            rendered_file_fallback = os.path.join(RENDER_OUTPUT_FOLDER, "NewLevelSequence.mp4")
+            if os.path.exists(rendered_file_fallback):
+                rendered_file = rendered_file_fallback
+                unreal.log(f"Using fallback file: {rendered_file_fallback}")
+            else:
+                return False
 
         # Get the base name of the input audio file (without extension)
         audio_basename = os.path.splitext(os.path.basename(input_audio_path))[0]
