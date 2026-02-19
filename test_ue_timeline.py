@@ -14,7 +14,7 @@ import unreal
 
 # ===== CONFIGURATION - CHANGE THIS TO YOUR ACTUAL AUDIO FILE =====
 AUDIO_FILE_PATH = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/output/cpu_gpu_en_neutral.wav"
-LEVEL_SEQUENCE_PATH = "/Game/backup_NewLevelSequence1"  # Updated to match the sequence with correct timeline
+LEVEL_SEQUENCE_PATH = "/Game/NewLevelSequence"
 
 def test_timeline_adjustment():
     """

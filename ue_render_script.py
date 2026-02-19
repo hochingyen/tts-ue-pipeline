@@ -62,7 +62,7 @@ current_audio_file_path = None  # Store input audio path for output naming
 
 # Configuration
 PRESET_PATH = "/Game/Cinematics/Pending_MoviePipelinePrimaryConfig.Pending_MoviePipelinePrimaryConfig"
-LEVEL_SEQUENCE_PATH = "/Game/backup_NewLevelSequence1"  # Updated to use the backup sequence with correct timeline
+LEVEL_SEQUENCE_PATH = "/Game/NewLevelSequence"
 MAP_PATH = "/Game/NewMap"
 INPUT_AUDIO_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/output"  # Windows path for UE
 OUTPUT_FOLDER = "C:/Users/marketing/Desktop/A2F_cynthia/tts-ue-pipeline/output"  # Output folder for final MP4s
@@ -158,18 +158,11 @@ def copy_output_file(input_audio_path):
 
     try:
         # Find the rendered MP4 file in the render output folder
-        # The filename will match the sequence name (backup_NewLevelSequence1.mp4)
-        rendered_file = os.path.join(RENDER_OUTPUT_FOLDER, "backup_NewLevelSequence1.mp4")
+        rendered_file = os.path.join(RENDER_OUTPUT_FOLDER, "NewLevelSequence.mp4")
 
         if not os.path.exists(rendered_file):
             unreal.log_error(f"Rendered file not found: {rendered_file}")
-            # Try fallback name just in case
-            rendered_file_fallback = os.path.join(RENDER_OUTPUT_FOLDER, "NewLevelSequence.mp4")
-            if os.path.exists(rendered_file_fallback):
-                rendered_file = rendered_file_fallback
-                unreal.log(f"Using fallback file: {rendered_file_fallback}")
-            else:
-                return False
+            return False
 
         # Get the base name of the input audio file (without extension)
         audio_basename = os.path.splitext(os.path.basename(input_audio_path))[0]
@@ -322,24 +315,38 @@ def adjust_sequence_to_audio_file(sequence, audio_file_path):
         unreal.log(f"    End: {end_frame} frames ({audio_duration:.2f}s × {fps:.0f}fps + 100 frame buffer)")
 
         # Set all ranges using display frames
+        unreal.log(f"\n  Setting playback range: 0 to {end_frame}")
         sequence.set_playback_start(0)
         sequence.set_playback_end(end_frame)
 
+        unreal.log(f"  Setting work range: 0 to {end_frame}")
         sequence.set_work_range_start(0)
         sequence.set_work_range_end(end_frame)
 
+        unreal.log(f"  Setting view range: 0 to {end_frame}")
         sequence.set_view_range_start(0)
         sequence.set_view_range_end(end_frame)
 
-        # Mark the sequence as modified
-        unreal.EditorAssetLibrary.save_loaded_asset(sequence)
+        # Mark the sequence as modified and save
+        unreal.log(f"\n  Marking sequence as dirty (modified)...")
+        unreal.EditorAssetLibrary.save_loaded_asset(sequence, only_if_is_dirty=False)  # Force save
 
         # Refresh the sequencer UI to show changes
+        unreal.log(f"  Refreshing sequencer UI...")
         unreal.LevelSequenceEditorBlueprintLibrary.refresh_current_level_sequence()
 
-        unreal.log(f"✓ Sequence playback range adjusted:")
-        unreal.log(f"  Duration: {audio_duration:.2f} seconds")
-        unreal.log(f"  Display Frames: {end_frame} @ {fps:.2f} fps (includes 100-frame buffer)")
+        # VERIFICATION: Read back to confirm changes persisted
+        verify_start = sequence.get_playback_start()
+        verify_end = sequence.get_playback_end()
+        verify_duration = (verify_end - verify_start) / fps
+
+        unreal.log(f"\n✓ Sequence playback range adjusted:")
+        unreal.log(f"  Target: {audio_duration:.2f} seconds ({end_frame} frames)")
+        unreal.log(f"  Actual: {verify_duration:.2f} seconds ({verify_end - verify_start} frames)")
+
+        if abs(verify_duration - audio_duration) > 5.0:
+            unreal.log_warning(f"  WARNING: Verification mismatch! Changes may not have persisted.")
+            unreal.log_warning(f"  Expected: ~{audio_duration:.2f}s, Got: {verify_duration:.2f}s")
 
         return audio_duration
 
@@ -453,6 +460,25 @@ def setup_and_render_with_preset(sequence_path, preset_path, map_path, audio_fil
         unreal.log("Applied preset configuration to job:")
         unreal.log("  - Output: 3840x2160 (4K) @ 30fps")
         unreal.log("  - Command Line Encoder: Enabled (deletes source PNGs)")
+
+        # CRITICAL: Override frame range to match sequence playback range
+        # The preset might have hardcoded frame ranges that ignore sequence timeline
+        if audio_file_path:
+            frame_rate = sequence.get_display_rate()
+            fps = frame_rate.numerator / frame_rate.denominator
+
+            playback_start = sequence.get_playback_start()
+            playback_end = sequence.get_playback_end()
+
+            unreal.log(f"\n[CRITICAL] Setting job frame range to match sequence timeline:")
+            unreal.log(f"  Sequence playback: {playback_start} to {playback_end} frames")
+            unreal.log(f"  Duration: {(playback_end - playback_start) / fps:.2f} seconds @ {fps} fps")
+
+            # Override the job's frame range using the sequence's playback range
+            job.set_sequence_range_start(playback_start)
+            job.set_sequence_range_end(playback_end)
+
+            unreal.log(f"✓ Job frame range overridden to match sequence timeline")
 
         # Note: Encoder settings come from preset
         # If videos aren't playable, add "-pix_fmt yuv420p" to Project Settings instead
